@@ -12,6 +12,8 @@ pub struct Graphics {
     g_fixed_decoded_bitmap_data: Box<[u8; K_MOVING_BITMAP_HEIGHT * K_MOVING_BITMAP_WIDTH]>,
     g_panel_decoded_bitmap_data: Box<[u8; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH]>,
     g_panel_rendered_bitmap_data: Box<[u8; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH]>,
+    g_title2_decoded_bitmap_data: Box<[u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]>,
+    g_palettes: Box<[ColorPalette; K_NUMBER_OF_PALETTES]>,
 }
 
 impl Graphics {
@@ -35,6 +37,8 @@ impl Graphics {
             g_panel_rendered_bitmap_data: Box::new(
                 [0; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH],
             ),
+            g_title2_decoded_bitmap_data: Box::new([0; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]),
+            g_palettes: Box::new([ColorPalette::default(); K_NUMBER_OF_PALETTES]),
         };
         graphics.read_menu_dat();
         graphics.read_back_dat();
@@ -43,6 +47,8 @@ impl Graphics {
         graphics.read_controls_dat();
         graphics.load_murphy_sprites();
         graphics.read_panel_dat();
+        graphics.read_title2_dat();
+        graphics.read_palettes_dat();
         graphics
     }
 
@@ -265,8 +271,47 @@ impl Graphics {
     }
 
     fn read_and_render_title_dat(&self) {}
+
     fn read_and_render_title1_dat(&self) {}
-    fn read_title2_dat(&self) {}
+
+    /// Load TITLE2.DAT
+    fn read_title2_dat(&mut self) {
+        let path = format!("{}/TITLE2.DAT", RESSOURCES_PATH);
+        let menu_file_path = Path::new(&path);
+        match menu_file_path
+            .try_exists()
+            .expect("Can't check existence of file TITLE2.DAT")
+        {
+            true => (),
+            false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
+        }
+        let mut file = File::open(menu_file_path).expect("Error while opening TITLE2.DAT");
+
+        let mut file_data = [0_u8; K_SCREEN_WIDTH / 2];
+        for y in 0..K_PANEL_BITMAP_HEIGHT {
+            file.read(&mut file_data)
+                .expect("Error while reading TITLE2.DAT");
+
+            for x in 0..K_PANEL_BITMAP_WIDTH {
+                let dest_pixels_address = y * K_SCREEN_WIDTH + x;
+                let source_pixel_address = x / 8;
+                let source_pixel_bit_position = 7 - (x % 8);
+
+                let b: u8 =
+                    (file_data[source_pixel_address + 0] >> source_pixel_bit_position) & 0x1;
+                let g: u8 =
+                    (file_data[source_pixel_address + 40] >> source_pixel_bit_position) & 0x1;
+                let r: u8 =
+                    (file_data[source_pixel_address + 80] >> source_pixel_bit_position) & 0x1;
+                let i: u8 =
+                    (file_data[source_pixel_address + 120] >> source_pixel_bit_position) & 0x1;
+
+                let final_color = (b << 0) | (g << 1) | (r << 2) | (i << 3);
+
+                self.g_title2_decoded_bitmap_data[dest_pixels_address] = final_color;
+            }
+        }
+    }
 
     /// Load GFX.DAT
     fn read_gfx_dat(&mut self) {
@@ -293,7 +338,52 @@ impl Graphics {
         self.g_gfx_bitmap_data = Box::new(data[0..K_FULL_SCREEN_BITMAP_LENGTH].try_into().unwrap());
     }
 
-    fn read_palettes_dat(&self) {}
+    fn convert_palette_data_to_palette(palette_data: ColorPaletteData) -> ColorPalette {
+        let k_exponent = 4;
+
+        let mut palette: ColorPalette = [Color {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        }; K_NUMBER_OF_COLORS];
+        for i in 0..K_NUMBER_OF_COLORS {
+            palette[i].r = palette_data[i * 4 + 0] << k_exponent;
+            palette[i].g = palette_data[i * 4 + 1] << k_exponent;
+            palette[i].b = palette_data[i * 4 + 2] << k_exponent;
+            palette[i].a = palette_data[i * 4 + 3] << k_exponent;
+        }
+        palette
+    }
+
+    /// Load PALETTES.DAT
+    fn read_palettes_dat(&mut self) {
+        let path = format!("{}/PALETTES.DAT", RESSOURCES_PATH);
+        let menu_file_path = Path::new(&path);
+        match menu_file_path
+            .try_exists()
+            .expect("Can't check existence of file PALETTES.DAT")
+        {
+            true => (),
+            false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
+        }
+
+        let mut file = File::open(menu_file_path).expect("Error while opening PALETTES.DAT");
+
+        for i in 0..K_NUMBER_OF_PALETTES {
+            let mut palette: ColorPaletteData = [0; K_PALETTE_DATA_SIZE];
+            match file.read(&mut palette) {
+                Ok(number_of_bytes_read) => {
+                    if number_of_bytes_read < K_PALETTE_DATA_SIZE {
+                        panic!("PALETTES.DAT has not the right size");
+                    }
+                }
+                Err(err) => panic!("Error while opening PALETTES.DAT : {}", err),
+            }
+
+            self.g_palettes[i] = Graphics::convert_palette_data_to_palette(palette);
+        }
+    }
 
     /// Load CONTROLS.DAT
     fn read_controls_dat(&mut self) {
@@ -321,9 +411,10 @@ impl Graphics {
             Box::new(data[0..K_FULL_SCREEN_BITMAP_LENGTH].try_into().unwrap());
     }
 
-    fn drawLevelViewport(&self) {}
+    fn draw_level_viewport(&self) {}
 }
 
+#[derive(Copy, Clone, Default)]
 struct Color {
     r: u8,
     g: u8,
@@ -344,6 +435,7 @@ impl Color {
 const RESSOURCES_PATH: &str = "resources";
 const K_SCREEN_WIDTH: usize = 320;
 const K_SCREEN_HEIGHT: usize = 200;
+const K_FULL_SCREEN_FRAMEBUFFER_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT;
 const K_FULL_SCREEN_BITMAP_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT / 2; // They use 4 bits to encode pixels
 
 const K_NUMBER_OF_CHARACTERS_IN_BITMAP_FONT: usize = 64;
@@ -363,24 +455,7 @@ const K_PANEL_BITMAP_HEIGHT: usize = 24;
 type ColorPalette = [Color; K_NUMBER_OF_COLORS];
 type ColorPaletteData = [u8; K_PALETTE_DATA_SIZE];
 
-const G_BLACK_PALETTE: ColorPalette = [
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-    Color::new(),
-];
+const G_BLACK_PALETTE: ColorPalette = [Color::new(); K_NUMBER_OF_COLORS];
 
 const gTitlePaletteData: ColorPaletteData = [
     0x02, 0x03, 0x05, 0x00, 0x0D, 0x0A, 0x04, 0x0C, 0x02, 0x06, 0x06, 0x02, 0x03, 0x09, 0x09, 0x03,
