@@ -433,8 +433,8 @@ impl Color {
 }
 
 const RESSOURCES_PATH: &str = "resources";
-const K_SCREEN_WIDTH: usize = 320;
-const K_SCREEN_HEIGHT: usize = 200;
+pub const K_SCREEN_WIDTH: usize = 320;
+pub const K_SCREEN_HEIGHT: usize = 200;
 const K_FULL_SCREEN_FRAMEBUFFER_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT;
 const K_FULL_SCREEN_BITMAP_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT / 2; // They use 4 bits to encode pixels
 

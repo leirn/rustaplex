@@ -1,14 +1,27 @@
-mod graphics;
+pub mod graphics;
 mod level;
+mod video;
+
 use graphics::Graphics;
+use video::Video;
+use sdl2::keyboard::Keycode;
+use sdl2::event::Event;
+use std::cell::RefCell;
+use std::rc::Rc;
+
 pub struct Game {
     graphics: Graphics,
+    video: Video,
+    sdl_context: Rc<RefCell<sdl2::Sdl>>,
 }
 
 impl Game {
     pub fn new() -> Game {
+        let sdl_context = Rc::new(RefCell::new(sdl2::init().unwrap()));
         Game {
             graphics: Graphics::init(),
+            video: Video::init(sdl_context.clone()),
+            sdl_context: sdl_context,
         }
     }
 
@@ -26,7 +39,20 @@ impl Game {
         self.run();
     }
 
-    fn run(&self) {}
+    fn run(&self) {
+        let mut continuer = true;
+        while continuer {
+        let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::Quit {..} |
+                    Event::KeyDown {
+                        keycode: Some(Keycode::Q), ..
+                    } => { continuer = false},
+                    _ => ()
+                }
+            }
+    }}
 
     fn load_all_ressources(&self) {}
 
