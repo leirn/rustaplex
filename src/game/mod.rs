@@ -5,7 +5,7 @@ pub mod video;
 mod utils;
 
 use globals::*;
-use graphics::Graphics;
+use graphics::{G_TITLE_PALETTE_DATA, Graphics};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use std::cell::RefCell;
@@ -67,6 +67,10 @@ impl Game<'_> {
         self.initialize_fade_palette();
         self.graphics.video_loop();
         self.graphics.read_and_render_title_dat();
+
+
+        let title_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE_PALETTE_DATA);
+        self.graphics.fade_to_palette(title_dat_palette);
 
         self.load_all_ressources();// Equivalent to Read everything
 

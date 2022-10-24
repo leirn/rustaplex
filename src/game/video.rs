@@ -5,9 +5,10 @@ use sdl2::pixels::{Color, Palette, PixelFormatEnum};
 use sdl2::rect::{Point, Rect};
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::surface::Surface;
-use sdl2::video::{FullscreenType, WindowContext};
+use sdl2::video::{FullscreenType, DisplayMode};
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::game::globals;
 
 #[derive(PartialEq, Clone, Copy)]
 enum ScalingMode {
@@ -31,9 +32,10 @@ pub struct Video<'a> {
 impl Video<'_> {
     pub fn init(sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Video<'static> {
         let _video_subsystem = sdl_context.borrow_mut().video().unwrap();
-        let _window = _video_subsystem
+        let display_mode = DisplayMode::new(PixelFormatEnum::Index8, K_SCREEN_WIDTH as i32, K_SCREEN_HEIGHT as i32, 60);
+        let mut _window = _video_subsystem
             .window(
-                "Window",
+                globals::WINDOW_TITLE,
                 graphics::K_SCREEN_WIDTH as u32,
                 graphics::K_SCREEN_HEIGHT as u32,
             )
@@ -41,6 +43,8 @@ impl Video<'_> {
             .resizable()
             .build()
             .unwrap();
+
+        _window.set_display_mode(display_mode).unwrap(); // Tries to align palette format with everything
 
         let mut _canvas = _window
             .into_canvas()
@@ -51,7 +55,9 @@ impl Video<'_> {
             .unwrap();
 
         _canvas.set_draw_color(Color::RGB(255, 210, 0));
+
         // A draw a rectangle which almost fills our window with it !
+        // Mainly for debugging purpose
         _canvas
             .fill_rect(Rect::new(
                 10,
@@ -65,7 +71,7 @@ impl Video<'_> {
         let surface = Surface::new(
             K_SCREEN_WIDTH as u32,
             K_SCREEN_HEIGHT as u32,
-            PixelFormatEnum::RGBA8888,
+            PixelFormatEnum::Index8,
         )
         .unwrap();
 

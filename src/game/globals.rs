@@ -1,3 +1,5 @@
+pub const WINDOW_TITLE: &str = "Rustaplex";
+
 pub const K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING: usize = 344;
 pub const K_LEVEL_DATA_LENGTH: usize = 1525;
 

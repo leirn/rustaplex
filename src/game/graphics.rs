@@ -1,5 +1,5 @@
-use crate::game::video::Video;
 use crate::game::globals::*;
+use crate::game::video::Video;
 use sdl2::pixels::Color;
 use std::cell::RefCell;
 use std::fs::File;
@@ -29,10 +29,14 @@ pub struct Graphics<'a> {
     g_frame_rate: f32,
     s_last_frame_time: u32,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
+    g_render_delta_time: u32,
 }
 
 impl Graphics<'_> {
-    pub fn init(video: Rc<RefCell<Video<'static>>>, sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Graphics<'static> {
+    pub fn init(
+        video: Rc<RefCell<Video<'static>>>,
+        sdl_context: Rc<RefCell<sdl2::Sdl>>,
+    ) -> Graphics<'static> {
         let mut graphics = Graphics {
             video: video,
             g_menu_bitmap_data: Box::new([0; K_FULL_SCREEN_BITMAP_LENGTH]),
@@ -63,6 +67,7 @@ impl Graphics<'_> {
             g_frame_rate: 0.0,
             s_last_frame_time: 0,
             sdl_context: sdl_context,
+            g_render_delta_time: 0,
         };
         graphics.load_murphy_sprites();
         graphics.read_palettes_dat();
@@ -311,7 +316,8 @@ impl Graphics<'_> {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect(format!("Error while opening {}", G_TITLE_DAT_FILENAME).as_str());
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_TITLE_DAT_FILENAME).as_str());
 
         const K_BYTES_PER_ROW: usize = K_SCREEN_WIDTH / 2;
         let mut file_data = [0_u8; K_BYTES_PER_ROW];
@@ -336,7 +342,9 @@ impl Graphics<'_> {
 
                 let final_color = (b << 0) | (g << 1) | (r << 2) | (i << 3);
 
-                self.video.borrow_mut().set_pixel(dest_pixels_address, final_color);
+                self.video
+                    .borrow_mut()
+                    .set_pixel(dest_pixels_address, final_color);
             }
         }
     }
@@ -351,7 +359,8 @@ impl Graphics<'_> {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect(format!("Error while opening {}", G_TITLE1_DAT_FILENAME).as_str());
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_TITLE1_DAT_FILENAME).as_str());
 
         const K_BYTES_PER_ROW: usize = K_SCREEN_WIDTH / 2;
         let mut file_data = [0_u8; K_BYTES_PER_ROW];
@@ -376,7 +385,9 @@ impl Graphics<'_> {
 
                 let final_color = (b << 0) | (g << 1) | (r << 2) | (i << 3);
 
-                self.video.borrow_mut().set_pixel(dest_pixels_address, final_color);
+                self.video
+                    .borrow_mut()
+                    .set_pixel(dest_pixels_address, final_color);
             }
         }
     }
@@ -449,7 +460,7 @@ impl Graphics<'_> {
         self.g_gfx_bitmap_data = Box::new(data[0..K_FULL_SCREEN_BITMAP_LENGTH].try_into().unwrap());
     }
 
-    fn convert_palette_data_to_palette(palette_data: ColorPaletteData) -> ColorPalette {
+    pub fn convert_palette_data_to_palette(palette_data: ColorPaletteData) -> ColorPalette {
         let k_exponent = 4;
 
         let mut palette: ColorPalette = [Color {
@@ -497,6 +508,52 @@ impl Graphics<'_> {
         }
     }
 
+    pub fn fade_to_palette(&mut self, palette: ColorPalette) {
+        // Parameters:
+        // si -> points to the first color of the palette to fade to
+
+        let mut intermediate_palette: ColorPalette = G_BLACK_PALETTE;
+
+        // The original animation had 64 steps, and the game was written to run in 70Hz displays
+        const K_FADE_DURATION: u32 = 64 * 1000 / 70; // ~914 ms
+        let mut fade_time: u32 = 0;
+
+        self.start_tracking_tender_delta_time();
+
+        // for (uint8_t step = 0; step < totalSteps; ++step)
+        while fade_time < K_FADE_DURATION {
+            fade_time += self.updateRenderDeltaTime();
+            fade_time = std::cmp::min(fade_time, K_FADE_DURATION);
+
+            let animation_factor = fade_time as f64 / K_FADE_DURATION as f64;
+            let complementary_animation_factor = 1.0 - animation_factor;
+
+            for i in 0..K_NUMBER_OF_COLORS {
+                let r = (palette[i].r as f64 * animation_factor)
+                    + (self.g_current_palette[i].r as f64 * complementary_animation_factor);
+                let g = (palette[i].g as f64 * animation_factor)
+                    + (self.g_current_palette[i].g as f64 * complementary_animation_factor);
+                let b = (palette[i].b as f64 * animation_factor)
+                    + (self.g_current_palette[i].b as f64 * complementary_animation_factor);
+
+                intermediate_palette[i] = Color {
+                    r: r as u8,
+                    g: g as u8,
+                    b: b as u8,
+                    a: 255,
+                };
+            }
+
+            self.video
+                .borrow_mut()
+                .set_color_palette(intermediate_palette);
+
+            self.video_loop();
+        }
+
+        self.set_palette(palette);
+    }
+
     /// Load CONTROLS.DAT
     fn read_controls_dat(&mut self) {
         let path = format!("{}/{}", RESSOURCES_PATH, G_CONTROLS_DAT_FILENAME);
@@ -540,7 +597,6 @@ impl Graphics<'_> {
         }
 
         //handleSystemEvents(); // Make sure the app stays responsive
-
 
         self.video.borrow_mut().render();
         self.video.borrow_mut().present();
@@ -586,6 +642,16 @@ impl Graphics<'_> {
     }
 
     fn draw_level_viewport(&self) {}
+
+    fn start_tracking_tender_delta_time(&mut self) {
+        self.g_render_delta_time = self.get_time();
+    }
+
+    fn updateRenderDeltaTime(&mut self) -> u32 {
+        let duration = self.get_time() - self.g_render_delta_time;
+        self.g_render_delta_time = self.get_time();
+        duration
+    }
 }
 /*
 #[derive(Copy, Clone, Default)]
@@ -636,21 +702,21 @@ pub const G_BLACK_PALETTE: ColorPalette = [Color {
     a: 0,
 }; K_NUMBER_OF_COLORS];
 
-const G_TITLE_PALETTE_DATA: ColorPaletteData = [
+pub const G_TITLE_PALETTE_DATA: ColorPaletteData = [
     0x02, 0x03, 0x05, 0x00, 0x0D, 0x0A, 0x04, 0x0C, 0x02, 0x06, 0x06, 0x02, 0x03, 0x09, 0x09, 0x03,
     0x0B, 0x08, 0x03, 0x06, 0x02, 0x07, 0x07, 0x0A, 0x08, 0x06, 0x0D, 0x09, 0x06, 0x04, 0x0B, 0x01,
     0x09, 0x01, 0x00, 0x04, 0x0B, 0x01, 0x00, 0x04, 0x0D, 0x01, 0x00, 0x0C, 0x0F, 0x01, 0x00, 0x0C,
     0x0F, 0x06, 0x04, 0x0C, 0x02, 0x05, 0x06, 0x08, 0x0F, 0x0C, 0x06, 0x0E, 0x0C, 0x0C, 0x0D, 0x0E,
 ];
 
-const G_TITLE1_PALETTE_DATA: ColorPaletteData = [
+pub const G_TITLE1_PALETTE_DATA: ColorPaletteData = [
     0x00, 0x00, 0x00, 0x00, 0x0F, 0x0F, 0x0F, 0x0F, 0x08, 0x08, 0x08, 0x08, 0x0A, 0x0A, 0x0A, 0x07,
     0x0A, 0x0A, 0x0A, 0x07, 0x0B, 0x0B, 0x0B, 0x07, 0x0E, 0x01, 0x01, 0x04, 0x09, 0x09, 0x09, 0x07,
     0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x09, 0x00, 0x00, 0x04, 0x0B, 0x00, 0x00, 0x0C,
     0x08, 0x08, 0x08, 0x08, 0x05, 0x05, 0x05, 0x08, 0x06, 0x06, 0x06, 0x08, 0x08, 0x08, 0x08, 0x08,
 ];
 
-const G_TITLE2_PALETTE_DATA: ColorPaletteData = [
+pub const G_TITLE2_PALETTE_DATA: ColorPaletteData = [
     0x00, 0x00, 0x00, 0x00, 0x0F, 0x0F, 0x0F, 0x0F, 0x06, 0x06, 0x06, 0x08, 0x0A, 0x0A, 0x0A, 0x07,
     0x0A, 0x0A, 0x0A, 0x07, 0x0B, 0x0B, 0x0B, 0x07, 0x0E, 0x01, 0x01, 0x04, 0x09, 0x09, 0x09, 0x07,
     0x01, 0x03, 0x07, 0x00, 0x08, 0x08, 0x08, 0x08, 0x09, 0x00, 0x00, 0x04, 0x0B, 0x00, 0x00, 0x0C,
