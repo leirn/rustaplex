@@ -1,3 +1,4 @@
+use crate::game::globals::*;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -40,38 +41,39 @@ impl Graphics {
             g_title2_decoded_bitmap_data: Box::new([0; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]),
             g_palettes: Box::new([ColorPalette::default(); K_NUMBER_OF_PALETTES]),
         };
+        graphics.load_murphy_sprites();
+        graphics.read_palettes_dat();
+        graphics.read_bitmap_fonts();
+        graphics.read_panel_dat();
         graphics.read_menu_dat();
+        graphics.read_controls_dat();
         graphics.read_back_dat();
         graphics.read_gfx_dat();
-        graphics.read_bitmap_fonts();
-        graphics.read_controls_dat();
-        graphics.load_murphy_sprites();
-        graphics.read_panel_dat();
         graphics.read_title2_dat();
-        graphics.read_palettes_dat();
         graphics
     }
 
     /// Load MENU.DAT file
     fn read_menu_dat(&mut self) {
-        let path = format!("{}/MENU.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_MENU_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file MENU.DAT")
+            .expect(format!("Can't check existence of file {}", G_MENU_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening MENU.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_MENU_DAT_FILENAME).as_str());
         let mut data = Vec::new();
         match file.read_to_end(&mut data) {
             Ok(number_of_bytes_read) => {
                 if number_of_bytes_read < K_FULL_SCREEN_BITMAP_LENGTH {
-                    panic!("MENU.DAT has not the right size");
+                    panic!("{} has not the right size", G_MENU_DAT_FILENAME);
                 }
             }
-            Err(err) => panic!("Error while opening MENU.DAT : {}", err),
+            Err(err) => panic!("Error while opening {} : {}", G_MENU_DAT_FILENAME, err),
         }
 
         self.g_menu_bitmap_data =
@@ -85,21 +87,22 @@ impl Graphics {
     fn load_murphy_sprites(&mut self) {
         {
             // File scope for MOVING.DAT
-            let path = format!("{}/MOVING.DAT", RESSOURCES_PATH);
+            let path = format!("{}/{}", RESSOURCES_PATH, G_MOVING_DAT_FILENAME);
             let menu_file_path = Path::new(&path);
             match menu_file_path
                 .try_exists()
-                .expect("Can't check existence of file MOVING.DAT")
+                .expect(format!("Can't check existence of file {}", G_MOVING_DAT_FILENAME).as_str())
             {
                 true => (),
                 false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
             }
-            let mut file = File::open(menu_file_path).expect("Error while opening MOVING.DAT");
+            let mut file = File::open(menu_file_path)
+                .expect(format!("Error while opening {}", G_MOVING_DAT_FILENAME).as_str());
 
             for y in 0..K_MOVING_BITMAP_HEIGHT {
                 let mut file_data = [0_u8; K_MOVING_BITMAP_WIDTH / 2];
                 file.read(&mut file_data)
-                    .expect("Error while reading MOVING.DAT");
+                    .expect(format!("Error while reading {}", G_MOVING_DAT_FILENAME).as_str());
 
                 for x in 0..K_MOVING_BITMAP_WIDTH {
                     let dest_pixels_address = y * K_MOVING_BITMAP_WIDTH + x;
@@ -128,16 +131,17 @@ impl Graphics {
             let menu_file_path = Path::new(&path);
             match menu_file_path
                 .try_exists()
-                .expect("Can't check existence of file FIXED.DAT")
+                .expect(format!("Can't check existence of file {}", G_FIXED_DAT_FILENAME).as_str())
             {
                 true => (),
                 false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
             }
-            let mut file = File::open(menu_file_path).expect("Error while opening MOVINFIXEDG.DAT");
+            let mut file = File::open(menu_file_path)
+                .expect(format!("Error while opening {}", G_FIXED_DAT_FILENAME).as_str());
 
             let mut bitmap_data = [0_u8; K_FIXED_BITMAP_WIDTH * K_FIXED_BITMAP_HEIGHT / 2];
             file.read(&mut bitmap_data)
-                .expect("Error while reading FIXED.DAT");
+                .expect(format!("Error while reading {}", G_FIXED_DAT_FILENAME).as_str());
             for y in 0..K_FIXED_BITMAP_HEIGHT {
                 for x in 0..K_FIXED_BITMAP_WIDTH {
                     let dest_pixels_address = y * K_FIXED_BITMAP_WIDTH + x;
@@ -163,20 +167,21 @@ impl Graphics {
     }
 
     fn read_panel_dat(&mut self) {
-        let path = format!("{}/PANEL.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_PANEL_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file PANEL.DAT")
+            .expect(format!("Can't check existence of file {}", G_PANEL_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening PANEL.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_PANEL_DAT_FILENAME).as_str());
 
         let mut bitmap_data = [0_u8; K_PANEL_BITMAP_WIDTH * K_PANEL_BITMAP_HEIGHT / 2];
         file.read(&mut bitmap_data)
-            .expect("Error while reading PANEL.DAT");
+            .expect(format!("Error while reading {}", G_PANEL_DAT_FILENAME).as_str());
         for y in 0..K_PANEL_BITMAP_HEIGHT {
             for x in 0..K_PANEL_BITMAP_WIDTH {
                 let dest_pixels_address = y * K_PANEL_BITMAP_WIDTH + x;
@@ -201,24 +206,25 @@ impl Graphics {
 
     /// Load BACK.DAT file
     fn read_back_dat(&mut self) {
-        let path = format!("{}/BACK.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_BACK_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file BACK.DAT")
+            .expect(format!("Can't check existence of file {}", G_BACK_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening BACK.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_BACK_DAT_FILENAME).as_str());
         let mut data = Vec::new();
         match file.read_to_end(&mut data) {
             Ok(number_of_bytes_read) => {
                 if number_of_bytes_read < K_FULL_SCREEN_BITMAP_LENGTH {
-                    panic!("BACK.DAT has not the right size");
+                    panic!("{} has not the right size", G_BACK_DAT_FILENAME);
                 }
             }
-            Err(err) => panic!("Error while opening BACK.DAT : {}", err),
+            Err(err) => panic!("Error while opening {} : {}", G_BACK_DAT_FILENAME, err),
         }
 
         self.g_back_bitmap_data =
@@ -227,42 +233,44 @@ impl Graphics {
 
     /// Load chars bitmap
     fn read_bitmap_fonts(&mut self) {
-        let path = format!("{}/CHARS6.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}T", RESSOURCES_PATH, G_CHARS6_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file CHARS6.DAT")
+            .expect(format!("Can't check existence of file {}", G_CHARS6_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening CHARS6.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_CHARS6_DAT_FILENAME).as_str());
         let mut data = Vec::new();
         match file.read_to_end(&mut data) {
             Ok(number_of_bytes_read) => {
                 if number_of_bytes_read < K_BITMAP_FONT_LENGTH {
-                    panic!("CHARS6.DAT has not the right size");
+                    panic!("{} has not the right size", G_CHARS6_DAT_FILENAME);
                 }
             }
             Err(err) => panic!("Error while opening CHAR6.DAT : {}", err),
         }
         self.g_chars_6_bitmap_font = Box::new(data[0..K_BITMAP_FONT_LENGTH].try_into().unwrap());
 
-        let path = format!("{}/CHARS8.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}T", RESSOURCES_PATH, G_CHARS8_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file CHAR8.DAT")
+            .expect(format!("Can't check existence of file {}", G_CHARS8_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening CHARS8.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_CHARS8_DAT_FILENAME).as_str());
         let mut data = Vec::new();
         match file.read_to_end(&mut data) {
             Ok(number_of_bytes_read) => {
                 if number_of_bytes_read < K_BITMAP_FONT_LENGTH {
-                    panic!("CHARS8.DAT has not the right size");
+                    panic!("{} has not the right size", G_CHARS8_DAT_FILENAME);
                 }
             }
             Err(err) => panic!("Error while opening CHARS8.DAT : {}", err),
@@ -276,21 +284,22 @@ impl Graphics {
 
     /// Load TITLE2.DAT
     fn read_title2_dat(&mut self) {
-        let path = format!("{}/TITLE2.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_TITLE2_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file TITLE2.DAT")
+            .expect(format!("Can't check existence of file {}", G_TITLE2_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening TITLE2.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_TITLE2_DAT_FILENAME).as_str());
 
         let mut file_data = [0_u8; K_SCREEN_WIDTH / 2];
         for y in 0..K_PANEL_BITMAP_HEIGHT {
             file.read(&mut file_data)
-                .expect("Error while reading TITLE2.DAT");
+                .expect(format!("Error while reading {}", G_TITLE2_DAT_FILENAME).as_str());
 
             for x in 0..K_PANEL_BITMAP_WIDTH {
                 let dest_pixels_address = y * K_SCREEN_WIDTH + x;
@@ -315,24 +324,25 @@ impl Graphics {
 
     /// Load GFX.DAT
     fn read_gfx_dat(&mut self) {
-        let path = format!("{}/GFX.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_GFX_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file GFX.DAT")
+            .expect(format!("Can't check existence of file {}", G_GFX_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening GFX.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_GFX_DAT_FILENAME).as_str());
         let mut data = Vec::new();
         match file.read_to_end(&mut data) {
             Ok(number_of_bytes_read) => {
                 if number_of_bytes_read < K_FULL_SCREEN_BITMAP_LENGTH {
-                    panic!("GFX.DAT has not the right size");
+                    panic!("{} has not the right size", G_GFX_DAT_FILENAME);
                 }
             }
-            Err(err) => panic!("Error while opening GFX.DAT : {}", err),
+            Err(err) => panic!("Error while opening {} : {}", G_GFX_DAT_FILENAME, err),
         }
 
         self.g_gfx_bitmap_data = Box::new(data[0..K_FULL_SCREEN_BITMAP_LENGTH].try_into().unwrap());
@@ -358,27 +368,28 @@ impl Graphics {
 
     /// Load PALETTES.DAT
     fn read_palettes_dat(&mut self) {
-        let path = format!("{}/PALETTES.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_PALETTES_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file PALETTES.DAT")
+            .expect(format!("Can't check existence of file {}", G_PALETTES_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
 
-        let mut file = File::open(menu_file_path).expect("Error while opening PALETTES.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_PALETTES_DAT_FILENAME).as_str());
 
         for i in 0..K_NUMBER_OF_PALETTES {
             let mut palette: ColorPaletteData = [0; K_PALETTE_DATA_SIZE];
             match file.read(&mut palette) {
                 Ok(number_of_bytes_read) => {
                     if number_of_bytes_read < K_PALETTE_DATA_SIZE {
-                        panic!("PALETTES.DAT has not the right size");
+                        panic!("{} has not the right size", G_PALETTES_DAT_FILENAME);
                     }
                 }
-                Err(err) => panic!("Error while opening PALETTES.DAT : {}", err),
+                Err(err) => panic!("Error while opening {} : {}", G_PALETTES_DAT_FILENAME, err),
             }
 
             self.g_palettes[i] = Graphics::convert_palette_data_to_palette(palette);
@@ -387,24 +398,25 @@ impl Graphics {
 
     /// Load CONTROLS.DAT
     fn read_controls_dat(&mut self) {
-        let path = format!("{}/CONTROLS.DAT", RESSOURCES_PATH);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_CONTROLS_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file CONTROLS.DAT")
+            .expect(format!("Can't check existence of file {}", G_CONTROLS_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening CONTROLS.DAT");
+        let mut file = File::open(menu_file_path)
+            .expect(format!("Error while opening {}", G_CONTROLS_DAT_FILENAME).as_str());
         let mut data = Vec::new();
         match file.read_to_end(&mut data) {
             Ok(number_of_bytes_read) => {
                 if number_of_bytes_read < K_FULL_SCREEN_BITMAP_LENGTH {
-                    panic!("CONTROLS.DAT has not the right size");
+                    panic!("{} has not the right size", G_CONTROLS_DAT_FILENAME);
                 }
             }
-            Err(err) => panic!("Error while opening CONTROLS.DAT : {}", err),
+            Err(err) => panic!("Error while opening {} : {}", G_CONTROLS_DAT_FILENAME, err),
         }
 
         self.g_controls_bitmap_data =
@@ -432,7 +444,6 @@ impl Color {
     }
 }
 
-const RESSOURCES_PATH: &str = "resources";
 pub const K_SCREEN_WIDTH: usize = 320;
 pub const K_SCREEN_HEIGHT: usize = 200;
 const K_FULL_SCREEN_FRAMEBUFFER_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT;
