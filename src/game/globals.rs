@@ -3,16 +3,16 @@ pub const K_LEVEL_DATA_LENGTH: usize = 1525;
 
 pub const K_LEVEL_WIDTH: usize = 60;
 pub const K_LEVEL_HEIGHT: usize = 24;
-pub const K_LEVEL_SIZE: usize = (K_LEVEL_WIDTH * K_LEVEL_HEIGHT);
+pub const K_LEVEL_SIZE: usize = K_LEVEL_WIDTH * K_LEVEL_HEIGHT;
 
 pub const K_NUMBER_OF_LEVEL: usize = 111;
-pub const K_NUMBER_OF_LEVEL_WITH_PADDING: usize = (K_NUMBER_OF_LEVEL + 5);
+pub const K_NUMBER_OF_LEVEL_WITH_PADDING: usize = K_NUMBER_OF_LEVEL + 5;
 pub const K_FIRST_LEVEL_INDEX: usize = 2;
-pub const K_LAST_LEVEL_INDEX: usize = (K_FIRST_LEVEL_INDEX + K_NUMBER_OF_LEVEL);
+pub const K_LAST_LEVEL_INDEX: usize = K_FIRST_LEVEL_INDEX + K_NUMBER_OF_LEVEL;
 pub const K_LIST_LEVEL_NAME_LENGTH: usize = 28; // In the list of levels, every level is 28 bytes long and looks like "001
 pub const K_LEVEL_NAME_LENGTH: usize = 24;
 
-pub const K_LEVEL_LIST_DATA_LENGTH: usize = (K_NUMBER_OF_LEVEL * K_LIST_LEVEL_NAME_LENGTH);
+pub const K_LEVEL_LIST_DATA_LENGTH: usize = K_NUMBER_OF_LEVEL * K_LIST_LEVEL_NAME_LENGTH;
 
 pub const RESSOURCES_PATH: &str = "resources";
 
