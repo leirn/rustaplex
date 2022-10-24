@@ -1,6 +1,8 @@
 use super::graphics::{self, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use crate::game::graphics::ColorPalette;
 use sdl2::pixels::Color;
-use sdl2::rect::Rect;
+use sdl2::pixels::Palette;
+use sdl2::rect::{Point, Rect};
 use sdl2::video::FullscreenType;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,7 +20,7 @@ enum ScalingMode {
 pub const TEXTURE_ASPECT_RATIO: f64 = K_SCREEN_WIDTH as f64 / K_SCREEN_HEIGHT as f64;
 
 pub struct Video {
-    canvas: sdl2::render::Canvas<sdl2::video::Window>,
+    g_renderer: sdl2::render::Canvas<sdl2::video::Window>,
     g_scaling_mode: ScalingMode,
 }
 
@@ -35,8 +37,10 @@ impl Video {
             .resizable()
             .build()
             .unwrap();
+
         let mut _canvas = _window
             .into_canvas()
+            .present_vsync()
             .index(Video::find_sdl_gl_driver().unwrap())
             .present_vsync()
             .build()
@@ -56,20 +60,20 @@ impl Video {
 
         Video {
             //video_subsystem: _video_subsystem,
-            canvas: _canvas,
+            g_renderer: _canvas,
             g_scaling_mode: ScalingMode::ScalingModeAspectFit,
         }
     }
 
     pub fn update_window_viewport(&mut self) {
-        let (window_height, window_width) = self.canvas.window().size();
+        let (window_height, window_width) = self.g_renderer.window().size();
 
         // If the scaling mode is fullscreen, use the window size
         if self.g_scaling_mode == ScalingMode::ScalingModeFullscreen {
-            self.canvas.viewport().set_x(0);
-            self.canvas.viewport().set_y(0);
-            self.canvas.viewport().set_width(window_width);
-            self.canvas.viewport().set_height(window_height);
+            self.g_renderer.viewport().set_x(0);
+            self.g_renderer.viewport().set_y(0);
+            self.g_renderer.viewport().set_width(window_width);
+            self.g_renderer.viewport().set_height(window_height);
             return;
         }
 
@@ -110,34 +114,34 @@ impl Video {
         }
 
         if should_preserve_width {
-            self.canvas
+            self.g_renderer
                 .viewport()
                 .set_x((window_width as i32 - max_viewport_width as i32) >> 1);
-            self.canvas.viewport().set_width(max_viewport_width);
-            let viewport_width = self.canvas.viewport().width();
-            self.canvas
+            self.g_renderer.viewport().set_width(max_viewport_width);
+            let viewport_width = self.g_renderer.viewport().width();
+            self.g_renderer
                 .viewport()
                 .set_height(viewport_width / texture_aspect_ratio as u32);
-            let viewport_height = self.canvas.viewport().height();
-            self.canvas
+            let viewport_height = self.g_renderer.viewport().height();
+            self.g_renderer
                 .viewport()
                 .set_y((window_height as i32 - viewport_height as i32) >> 1);
         } else {
-            self.canvas
+            self.g_renderer
                 .viewport()
                 .set_y((window_height as i32 - max_viewport_height as i32) >> 1);
-            self.canvas.viewport().set_height(max_viewport_height);
-            let viewport_height = self.canvas.viewport().height();
-            self.canvas
+            self.g_renderer.viewport().set_height(max_viewport_height);
+            let viewport_height = self.g_renderer.viewport().height();
+            self.g_renderer
                 .viewport()
                 .set_width(viewport_height * texture_aspect_ratio as u32);
-            let viewport_width = self.canvas.viewport().width();
-            self.canvas
+            let viewport_width = self.g_renderer.viewport().width();
+            self.g_renderer
                 .viewport()
                 .set_x((window_width as i32 - viewport_width as i32) >> 1);
         }
 
-        self.canvas.present();
+        self.g_renderer.present();
     }
 
     pub fn get_scaling_mode(&self) -> ScalingMode {
@@ -158,14 +162,14 @@ impl Video {
             true => FullscreenType::True,
             false => FullscreenType::Desktop,
         };
-        self.canvas
+        self.g_renderer
             .window_mut()
             .set_fullscreen(full_screen_type)
             .unwrap();
     }
 
     fn get_fullscreen_mode(&self) -> bool {
-        let is_fullscreen = self.canvas.window().fullscreen_state();
+        let is_fullscreen = self.g_renderer.window().fullscreen_state();
         is_fullscreen == FullscreenType::True
     }
 
@@ -177,5 +181,46 @@ impl Video {
             }
         }
         None
+    }
+
+    pub fn set_pixel(&mut self, address: usize, color: u8) {
+        let x = address % K_SCREEN_WIDTH;
+        let y = address / K_SCREEN_HEIGHT;
+        let p = Point::new(x as i32, y as i32);
+
+        //let color = self.g_color_palette.get(color as usize).unwrap();
+
+        //self.g_renderer.set_draw_color(*color);
+        //self.g_renderer.draw_point(p);
+    }
+
+    pub fn set_color_palette(&mut self, palette: ColorPalette) {
+        //self.g_color_palette = palette.clone();
+        //let palette = Palette::with_colors(&palette).unwrap();
+        //self.g_screen_surface.set_palette(&palette).unwrap();
+    }
+
+    pub fn render(&mut self) {
+        //self.g_screen_surface
+        //    .blit(None, &mut self.g_texture_surface.borrow_mut(), None);
+        //SDL_BlitSurface(gScreenSurface, NULL, gTextureSurface, NULL);
+
+        /*self.g_texture.update(
+            None,
+            self.g_texture_surface.without_lock().unwrap(),
+            self.g_texture_surface.pitch() as usize,
+        );*/
+        //SDL_UpdateTexture(gTexture, NULL, gTextureSurface->pixels, gTextureSurface->pitch);
+
+        self.g_renderer.clear();
+        //SDL_RenderClear(gRenderer);
+
+        /*self.g_renderer
+        .copy(&self.g_texture, None, self.g_renderer.viewport());*/
+        //SDL_RenderCopy(gRenderer, gTexture, NULL, &gWindowViewport);
+    }
+
+    pub fn present(&mut self) {
+        self.g_renderer.present();
     }
 }
