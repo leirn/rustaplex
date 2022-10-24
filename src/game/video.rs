@@ -140,11 +140,11 @@ impl Video {
         self.canvas.present();
     }
 
-    pub fn getScalingMode(&self) -> ScalingMode {
+    pub fn get_scaling_mode(&self) -> ScalingMode {
         self.g_scaling_mode
     }
 
-    pub fn setScalingMode(&mut self, mode: ScalingMode) {
+    pub fn set_scaling_mode(&mut self, mode: ScalingMode) {
         self.g_scaling_mode = mode;
         self.update_window_viewport();
     }
