@@ -9,6 +9,9 @@ use graphics::Graphics;
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use std::cell::RefCell;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
+use std::path::Path;
 use std::rc::Rc;
 use video::Video;
 
@@ -20,6 +23,9 @@ pub struct Game {
         [StatefulLevelTile; K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
     g_frame_counter: u16,
     g_random_generator_seed: u16,
+    g_level_list_data: [String; K_NUMBER_OF_LEVEL_WITH_PADDING],
+    g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
+    g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
 }
 
 impl Game {
@@ -33,13 +39,18 @@ impl Game {
                 K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
             g_frame_counter: 0,
             g_random_generator_seed: 0,
+            g_level_list_data: [(); K_NUMBER_OF_LEVEL_WITH_PADDING]
+                .map(|_| String::from("                           ")),
+            g_player_list_data: [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new()),
+            g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
+                .map(|_| HallOfFameEntry::new()),
         }
     }
 
     pub fn start(&mut self) {
         // Based from open-supaplex
         // parseCommandLineOptions(argc, argv); --> Not used yet
-        //initializeLogging(); --> No logging system
+        // initializeLogging(); --> No logging system
         // initializeSystem(); --> Initialize SDL. Already done
         // initializeVideo(gFastMode); --> Initialise SDL video, ALready done
         // initializeControllers(); --> For SDL Joystick, not implemented yet
@@ -93,13 +104,140 @@ impl Game {
         self.read_players_lst();
     }
 
-    fn read_levels_lst(&mut self) {}
+    fn read_levels_lst(&mut self) {
+        // Re-init g_level_list_data
+        self.g_level_list_data = [(); K_NUMBER_OF_LEVEL_WITH_PADDING]
+            .map(|_| String::from("                           "));
+        self.g_level_list_data[K_LAST_LEVEL_INDEX] = String::from("- REPLAY SKIPPED LEVELS!! -");
+        self.g_level_list_data[K_LAST_LEVEL_INDEX + 1] =
+            String::from("---- UNBELIEVEABLE!!!! ----");
+
+        let path = format!("{}/{}", RESSOURCES_PATH, G_LEVELS_DAT_FILENAME);
+        let level_lst_file_path = Path::new(&path);
+        match level_lst_file_path
+            .try_exists()
+            .expect(format!("Can't check existence of file {}", G_LEVELS_DAT_FILENAME).as_str())
+        {
+            true => (),
+            false => panic!("{:?} doesn't exists", level_lst_file_path.canonicalize()),
+        }
+        let mut file = File::open(level_lst_file_path)
+            .expect(format!("Error while opening {}", G_LEVELS_DAT_FILENAME).as_str());
+
+        let mut file_data = [0_u8; K_LEVEL_NAME_LENGTH - 1];
+
+        for i in 0..K_NUMBER_OF_LEVEL {
+            let seek_offset = 0x5A6 + i * K_LEVEL_DATA_LENGTH;
+            file.seek(SeekFrom::Start(seek_offset as u64)).expect(
+                format!(
+                    "Error while seeking offset {} in {}",
+                    seek_offset, G_LEVELS_LST_FILENAME
+                )
+                .as_str(),
+            );
+            file.read(&mut file_data)
+                .expect(format!("Error while reading {}", G_LEVELS_LST_FILENAME).as_str());
+
+            let level_name = format!("{:03} {:?}", i, file_data);
+
+            self.g_level_list_data[i] = level_name;
+        }
+    }
 
     fn read_demo_files(&mut self) {}
 
-    fn read_hall_fame_lst(&mut self) {}
+    /// Read the list of players in hall of fame file
+    fn read_hall_fame_lst(&mut self) {
+        let path = format!("{}/{}", RESSOURCES_PATH, G_HALL_OF_FAME_LST_FILENAME);
+        let hof_lst_file_path = Path::new(&path);
+        match hof_lst_file_path.try_exists().expect(
+            format!(
+                "Can't check existence of file {}",
+                G_HALL_OF_FAME_LST_FILENAME
+            )
+            .as_str(),
+        ) {
+            true => (),
+            false => return, // No player file found
+        }
+        let mut file = File::open(hof_lst_file_path)
+            .expect(format!("Error while opening {}", G_HALL_OF_FAME_LST_FILENAME).as_str());
 
-    fn read_players_lst(&mut self) {}
+        let mut player_data: [u8; K_HALL_OF_FAME_ENTRY_SIZE] = [0; K_HALL_OF_FAME_ENTRY_SIZE];
+        for i in 0..K_NUMBER_OF_HALL_OF_FAME_ENTRIES {
+            match file.read_exact(&mut player_data) {
+                Ok(_) => (),
+                Err(_) => return, // No more players to load
+            }
+
+            self.g_hall_of_fame_data[i].name = format!(
+                "{}{}{}{}{}{}{}{}",
+                player_data[0],
+                player_data[1],
+                player_data[2],
+                player_data[3],
+                player_data[4],
+                player_data[5],
+                player_data[6],
+                player_data[7]
+            );
+            self.g_hall_of_fame_data[i].hours = player_data[K_PLAYER_NAME_LENGTH + 2];
+            self.g_hall_of_fame_data[i].minutes = player_data[K_PLAYER_NAME_LENGTH + 3];
+            self.g_hall_of_fame_data[i].seconds = player_data[K_PLAYER_NAME_LENGTH + 4];
+        }
+    }
+
+    /// Read the PLAYER.DAT file to load previous player save.
+    fn read_players_lst(&mut self) {
+        let path = format!("{}/{}", RESSOURCES_PATH, G_PLAYERS_LST_FILENAME);
+        let player_lst_file_path = Path::new(&path);
+        match player_lst_file_path
+            .try_exists()
+            .expect(format!("Can't check existence of file {}", G_PLAYERS_LST_FILENAME).as_str())
+        {
+            true => (),
+            false => return, // No player file found
+        }
+        let mut file = File::open(player_lst_file_path)
+            .expect(format!("Error while opening {}", G_PLAYERS_LST_FILENAME).as_str());
+
+        let mut player_data: [u8; K_PLAYER_ENTRY_SIZE] = [0; K_PLAYER_ENTRY_SIZE];
+        for i in 0..K_NUMBER_OF_PLAYERS {
+            match file.read_exact(&mut player_data) {
+                Ok(_) => (),
+                Err(_) => return, // No more players to load
+            }
+
+            self.g_player_list_data[i].name = format!(
+                "{}{}{}{}{}{}{}{}",
+                player_data[0],
+                player_data[1],
+                player_data[2],
+                player_data[3],
+                player_data[4],
+                player_data[5],
+                player_data[6],
+                player_data[7]
+            );
+            self.g_player_list_data[i].hours = player_data[K_PLAYER_NAME_LENGTH + 2];
+            self.g_player_list_data[i].minutes = player_data[K_PLAYER_NAME_LENGTH + 3];
+            self.g_player_list_data[i].seconds = player_data[K_PLAYER_NAME_LENGTH + 4];
+            for j in 0..K_NUMBER_OF_LEVEL {
+                self.g_player_list_data[i].level_state[j] =
+                    player_data[K_PLAYER_NAME_LENGTH + 5 + j];
+            }
+            self.g_player_list_data[i].unknown1 =
+                player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 5];
+            self.g_player_list_data[i].unknown2 =
+                player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 6];
+            self.g_player_list_data[i].unknown3 =
+                player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 7];
+            self.g_player_list_data[i].next_level_to_play =
+                player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 8];
+            self.g_player_list_data[i].completed_all_levels =
+                player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 9];
+        }
+    }
 
     fn init_audio(&self) {}
     fn init_controller(&self) {}

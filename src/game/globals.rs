@@ -10,6 +10,7 @@ pub const K_NUMBER_OF_LEVEL_WITH_PADDING: usize = (K_NUMBER_OF_LEVEL + 5);
 pub const K_FIRST_LEVEL_INDEX: usize = 2;
 pub const K_LAST_LEVEL_INDEX: usize = (K_FIRST_LEVEL_INDEX + K_NUMBER_OF_LEVEL);
 pub const K_LIST_LEVEL_NAME_LENGTH: usize = 28; // In the list of levels, every level is 28 bytes long and looks like "001
+pub const K_LEVEL_NAME_LENGTH: usize = 24;
 
 pub const K_LEVEL_LIST_DATA_LENGTH: usize = (K_NUMBER_OF_LEVEL * K_LIST_LEVEL_NAME_LENGTH);
 
@@ -88,3 +89,57 @@ pub enum LevelTileType {
     LevelTileTypeHorizontalChipBottom = 39,
     LevelTileTypeCount,
 }
+
+pub struct PlayerEntry {
+    pub name: String,
+    pub hours: u8,
+    pub minutes: u8,
+    pub seconds: u8,
+    pub level_state: [u8; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+    pub unknown1: u8,
+    pub unknown2: u8,
+    pub unknown3: u8,
+    pub next_level_to_play: u8,
+    pub completed_all_levels: u8, // Still not 100% sure
+}
+
+impl PlayerEntry {
+    pub fn new() -> PlayerEntry {
+        PlayerEntry {
+            name: String::from("--------"), // Default player name
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+            level_state: [0; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+            unknown1: 0,
+            unknown2: 0,
+            unknown3: 0,
+            next_level_to_play: 0,
+            completed_all_levels: 0, // Still not 100% sure
+        }
+    }
+}
+
+pub struct HallOfFameEntry {
+    pub name: String,
+    pub hours: u8,
+    pub minutes: u8,
+    pub seconds: u8,
+}
+
+impl HallOfFameEntry {
+    pub fn new() -> HallOfFameEntry {
+        HallOfFameEntry {
+            name: String::from("--------"), // Default player name
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
+
+pub const K_PLAYER_ENTRY_SIZE: usize = K_PLAYER_NAME_LENGTH + 1 + 3 + K_NUMBER_OF_LEVEL + 5;
+pub const K_HALL_OF_FAME_ENTRY_SIZE: usize = K_PLAYER_NAME_LENGTH + 1 + 3;
+pub const K_PLAYER_NAME_LENGTH: usize = 8;
+pub const K_NUMBER_OF_PLAYERS: usize = 20;
+pub const K_NUMBER_OF_HALL_OF_FAME_ENTRIES: usize = 3;
