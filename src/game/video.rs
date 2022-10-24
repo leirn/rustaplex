@@ -1,9 +1,11 @@
+use super::graphics::G_BLACK_PALETTE;
 use super::graphics::{self, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
 use crate::game::graphics::ColorPalette;
-use sdl2::pixels::Color;
-use sdl2::pixels::Palette;
+use sdl2::pixels::{Color, Palette, PixelFormatEnum};
 use sdl2::rect::{Point, Rect};
-use sdl2::video::FullscreenType;
+use sdl2::render::{Texture, TextureCreator};
+use sdl2::surface::Surface;
+use sdl2::video::{FullscreenType, WindowContext};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -19,13 +21,15 @@ enum ScalingMode {
 
 pub const TEXTURE_ASPECT_RATIO: f64 = K_SCREEN_WIDTH as f64 / K_SCREEN_HEIGHT as f64;
 
-pub struct Video {
+pub struct Video<'a> {
     g_renderer: sdl2::render::Canvas<sdl2::video::Window>,
     g_scaling_mode: ScalingMode,
+    g_color_palette: ColorPalette,
+    g_screen_surface: Surface<'a>,
 }
 
-impl Video {
-    pub fn init(sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Video {
+impl Video<'_> {
+    pub fn init(sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Video<'static> {
         let _video_subsystem = sdl_context.borrow_mut().video().unwrap();
         let _window = _video_subsystem
             .window(
@@ -58,10 +62,19 @@ impl Video {
             .unwrap();
         _canvas.present();
 
+        let surface = Surface::new(
+            K_SCREEN_WIDTH as u32,
+            K_SCREEN_HEIGHT as u32,
+            PixelFormatEnum::RGBA8888,
+        )
+        .unwrap();
+
         Video {
             //video_subsystem: _video_subsystem,
             g_renderer: _canvas,
             g_scaling_mode: ScalingMode::ScalingModeAspectFit,
+            g_color_palette: G_BLACK_PALETTE,
+            g_screen_surface: surface,
         }
     }
 
@@ -184,20 +197,13 @@ impl Video {
     }
 
     pub fn set_pixel(&mut self, address: usize, color: u8) {
-        let x = address % K_SCREEN_WIDTH;
-        let y = address / K_SCREEN_HEIGHT;
-        let p = Point::new(x as i32, y as i32);
-
-        //let color = self.g_color_palette.get(color as usize).unwrap();
-
-        //self.g_renderer.set_draw_color(*color);
-        //self.g_renderer.draw_point(p);
+        self.g_screen_surface.without_lock_mut().unwrap()[address] = color;
     }
 
     pub fn set_color_palette(&mut self, palette: ColorPalette) {
-        //self.g_color_palette = palette.clone();
-        //let palette = Palette::with_colors(&palette).unwrap();
-        //self.g_screen_surface.set_palette(&palette).unwrap();
+        self.g_color_palette = palette.clone();
+        let palette = Palette::with_colors(&palette).unwrap();
+        self.g_screen_surface.set_palette(&palette).unwrap();
     }
 
     pub fn render(&mut self) {
@@ -214,9 +220,11 @@ impl Video {
 
         self.g_renderer.clear();
         //SDL_RenderClear(gRenderer);
+        let creator = self.g_renderer.texture_creator();
+        let texture = self.g_screen_surface.as_texture(&creator).unwrap();
 
-        /*self.g_renderer
-        .copy(&self.g_texture, None, self.g_renderer.viewport());*/
+        self.g_renderer
+        .copy(&texture, None, self.g_renderer.viewport());
         //SDL_RenderCopy(gRenderer, gTexture, NULL, &gWindowViewport);
     }
 
@@ -224,3 +232,4 @@ impl Video {
         self.g_renderer.present();
     }
 }
+

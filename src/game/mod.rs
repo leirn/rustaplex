@@ -15,9 +15,9 @@ use std::path::Path;
 use std::rc::Rc;
 use video::Video;
 
-pub struct Game {
-    graphics: Graphics,
-    video: Rc<RefCell<Video>>,
+pub struct Game<'a> {
+    graphics: Graphics<'a>,
+    video: Rc<RefCell<Video<'a>>>,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     g_current_level_state_with_padding:
         [StatefulLevelTile; K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
@@ -28,8 +28,8 @@ pub struct Game {
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
 }
 
-impl Game {
-    pub fn new() -> Game {
+impl Game<'_> {
+    pub fn new() -> Game<'static> {
         let sdl_context = Rc::new(RefCell::new(sdl2::init().unwrap()));
         let video= Rc::new(RefCell::new(Video::init(sdl_context.clone())));
         Game {
@@ -66,9 +66,13 @@ impl Game {
 
         self.initialize_fade_palette();
         self.graphics.video_loop();
+        self.graphics.read_and_render_title_dat();
 
         self.load_all_ressources();// Equivalent to Read everything
 
+
+        // Opening sequence
+        //self.load_screen_2();
         // Start main loop
         self.run();
     }
@@ -89,7 +93,7 @@ impl Game {
                         ..
                     } => self.video.borrow_mut().toggle_fullscreen(),
                     Event::Window { win_event, .. } => {
-                        if let WindowEvent::Resized(w, h) = win_event {
+                        if let WindowEvent::Resized(_w, _h) = win_event {
                             //handle the resize event
                             println!("Window resized Event received");
                             self.video.borrow_mut().update_window_viewport();
@@ -106,6 +110,11 @@ impl Game {
         self.read_demo_files();
         self.read_hall_fame_lst();
         self.read_players_lst();
+    }
+
+    fn load_screen_2(&mut self) {
+        self.graphics.read_and_render_title1_dat();
+        // TODO unfinished
     }
 
     fn read_levels_lst(&mut self) {

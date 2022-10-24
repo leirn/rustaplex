@@ -7,8 +7,8 @@ use std::io::Read;
 use std::path::Path;
 use std::rc::Rc;
 
-pub struct Graphics {
-    video: Rc<RefCell<Video>>,
+pub struct Graphics<'a> {
+    video: Rc<RefCell<Video<'a>>>,
     g_menu_bitmap_data: Box<[u8; K_FULL_SCREEN_BITMAP_LENGTH]>,
     g_back_bitmap_data: Box<[u8; K_FULL_SCREEN_BITMAP_LENGTH]>,
     g_controls_bitmap_data: Box<[u8; K_FULL_SCREEN_BITMAP_LENGTH]>,
@@ -31,8 +31,8 @@ pub struct Graphics {
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
 }
 
-impl Graphics {
-    pub fn init(video: Rc<RefCell<Video>>, sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Graphics {
+impl Graphics<'_> {
+    pub fn init(video: Rc<RefCell<Video<'static>>>, sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Graphics<'static> {
         let mut graphics = Graphics {
             video: video,
             g_menu_bitmap_data: Box::new([0; K_FULL_SCREEN_BITMAP_LENGTH]),
@@ -301,24 +301,24 @@ impl Graphics {
         self.g_chars_8_bitmap_font = Box::new(data[0..K_BITMAP_FONT_LENGTH].try_into().unwrap());
     }
 
-    fn read_and_render_title_dat(&mut self) {
-        let path = format!("{}/TITLE.DAT", RESSOURCES_PATH);
+    pub fn read_and_render_title_dat(&mut self) {
+        let path = format!("{}/{}", RESSOURCES_PATH, G_TITLE_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file TITLE.DAT")
+            .expect(format!("Can't check existence of file {}", G_TITLE_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening TITLE.DAT");
+        let mut file = File::open(menu_file_path).expect(format!("Error while opening {}", G_TITLE_DAT_FILENAME).as_str());
 
         const K_BYTES_PER_ROW: usize = K_SCREEN_WIDTH / 2;
         let mut file_data = [0_u8; K_BYTES_PER_ROW];
 
         for y in 0..K_SCREEN_HEIGHT {
             file.read(&mut file_data)
-                .expect("Error while reading TITLE.DAT");
+                .expect(format!("Error while reading {}", G_TITLE_DAT_FILENAME).as_str());
 
             for x in 0..K_SCREEN_WIDTH {
                 let dest_pixels_address = y * K_SCREEN_WIDTH + x;
@@ -341,24 +341,24 @@ impl Graphics {
         }
     }
 
-    fn read_and_render_title1_dat(&mut self) {
-        let path = format!("{}/TITLE1.DAT", RESSOURCES_PATH);
+    pub fn read_and_render_title1_dat(&mut self) {
+        let path = format!("{}/{}", RESSOURCES_PATH, G_TITLE2_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
-            .expect("Can't check existence of file TITLE1.DAT")
+            .expect(format!("Can't check existence of file {}", G_TITLE1_DAT_FILENAME).as_str())
         {
             true => (),
             false => panic!("{:?} doesn't exists", menu_file_path.canonicalize()),
         }
-        let mut file = File::open(menu_file_path).expect("Error while opening TITLE1.DAT");
+        let mut file = File::open(menu_file_path).expect(format!("Error while opening {}", G_TITLE1_DAT_FILENAME).as_str());
 
         const K_BYTES_PER_ROW: usize = K_SCREEN_WIDTH / 2;
         let mut file_data = [0_u8; K_BYTES_PER_ROW];
 
         for y in 0..K_SCREEN_HEIGHT {
             file.read(&mut file_data)
-                .expect("Error while reading TITLE1.DAT");
+                .expect(format!("Error while reading {}", G_TITLE1_DAT_FILENAME).as_str());
 
             for x in 0..K_SCREEN_WIDTH {
                 let dest_pixels_address = y * K_SCREEN_WIDTH + x;
