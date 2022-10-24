@@ -1,8 +1,8 @@
 mod globals;
 pub mod graphics;
 mod level;
+pub mod video;
 mod utils;
-mod video;
 
 use globals::*;
 use graphics::Graphics;
@@ -17,7 +17,7 @@ use video::Video;
 
 pub struct Game {
     graphics: Graphics,
-    video: Video,
+    video: Rc<RefCell<Video>>,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     g_current_level_state_with_padding:
         [StatefulLevelTile; K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
@@ -31,9 +31,10 @@ pub struct Game {
 impl Game {
     pub fn new() -> Game {
         let sdl_context = Rc::new(RefCell::new(sdl2::init().unwrap()));
+        let video= Rc::new(RefCell::new(Video::init(sdl_context.clone())));
         Game {
-            graphics: Graphics::init(),
-            video: Video::init(sdl_context.clone()),
+            video: video.clone(),
+            graphics: Graphics::init(video.clone(), sdl_context.clone()),
             sdl_context: sdl_context,
             g_current_level_state_with_padding: [StatefulLevelTile::default();
                 K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
@@ -63,7 +64,10 @@ impl Game {
 
         self.generate_random_seed_from_clock();
 
-        self.load_all_ressources(); // Equivalent to Read everything
+        self.initialize_fade_palette();
+        self.graphics.video_loop();
+
+        self.load_all_ressources();// Equivalent to Read everything
 
         // Start main loop
         self.run();
@@ -83,12 +87,12 @@ impl Game {
                     Event::KeyUp {
                         keycode: Some(Keycode::F),
                         ..
-                    } => self.video.toggle_fullscreen(),
+                    } => self.video.borrow_mut().toggle_fullscreen(),
                     Event::Window { win_event, .. } => {
                         if let WindowEvent::Resized(w, h) = win_event {
                             //handle the resize event
                             println!("Window resized Event received");
-                            self.video.update_window_viewport();
+                            self.video.borrow_mut().update_window_viewport();
                         }
                     }
                     _ => (),
@@ -307,5 +311,9 @@ impl Game {
         let low_value: u16 = (clock_count & 0xffff) as u16;
         let high_value = ((clock_count >> 16) & 0xfff) as u16;
         self.g_random_generator_seed = high_value ^ low_value;
+    }
+
+    fn initialize_fade_palette(&mut self) {
+        self.graphics.set_palette(graphics::G_BLACK_PALETTE);
     }
 }
