@@ -1,11 +1,11 @@
 mod globals;
 pub mod graphics;
 mod level;
-pub mod video;
 mod utils;
+pub mod video;
 
 use globals::*;
-use graphics::{G_TITLE_PALETTE_DATA, Graphics};
+use graphics::{Graphics, G_TITLE_PALETTE_DATA, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use std::cell::RefCell;
@@ -31,7 +31,7 @@ pub struct Game<'a> {
 impl Game<'_> {
     pub fn new() -> Game<'static> {
         let sdl_context = Rc::new(RefCell::new(sdl2::init().unwrap()));
-        let video= Rc::new(RefCell::new(Video::init(sdl_context.clone())));
+        let video = Rc::new(RefCell::new(Video::init(sdl_context.clone())));
         Game {
             video: video.clone(),
             graphics: Graphics::init(video.clone(), sdl_context.clone()),
@@ -65,18 +65,24 @@ impl Game<'_> {
         self.generate_random_seed_from_clock();
 
         self.initialize_fade_palette();
-        self.graphics.video_loop();
-        self.graphics.read_and_render_title_dat();
+        {
+            // Display welcome grahpic
+            self.graphics.video_loop();
+            self.graphics.read_and_render_title_dat();
+            let title_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE_PALETTE_DATA);
+            self.graphics.fade_to_palette(title_dat_palette);
+        }
 
+        self.load_all_ressources(); // Equivalent to Read everything
 
-        let title_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE_PALETTE_DATA);
-        self.graphics.fade_to_palette(title_dat_palette);
-
-        self.load_all_ressources();// Equivalent to Read everything
-
-
+        {
         // Opening sequence
-        //self.load_screen_2();
+        self.load_screen_2();
+        //readEverything(); // 01ED:02BC
+        //drawSpeedFixTitleAndVersion(); // 01ED:02BF
+        //openCreditsBlock(); // credits inside the block // 01ED:02C2
+        //drawSpeedFixCredits();   // credits below the block (herman perk and elmer productions) // 01ED:02C5
+        }
         // Start main loop
         self.run();
     }
@@ -118,7 +124,11 @@ impl Game<'_> {
 
     fn load_screen_2(&mut self) {
         self.graphics.read_and_render_title1_dat();
-        // TODO unfinished
+        let title1_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE1_PALETTE_DATA);
+        self.graphics.set_palette(title1_dat_palette);
+        self.graphics.video_loop();
+
+        self.graphics.read_title2_dat();
     }
 
     fn read_levels_lst(&mut self) {

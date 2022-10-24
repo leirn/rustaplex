@@ -393,7 +393,7 @@ impl Graphics<'_> {
     }
 
     /// Load TITLE2.DAT
-    fn read_title2_dat(&mut self) {
+    pub fn read_title2_dat(&mut self) {
         let path = format!("{}/{}", RESSOURCES_PATH, G_TITLE2_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
@@ -522,7 +522,7 @@ impl Graphics<'_> {
 
         // for (uint8_t step = 0; step < totalSteps; ++step)
         while fade_time < K_FADE_DURATION {
-            fade_time += self.updateRenderDeltaTime();
+            fade_time += self.update_render_delta_time();
             fade_time = std::cmp::min(fade_time, K_FADE_DURATION);
 
             let animation_factor = fade_time as f64 / K_FADE_DURATION as f64;
@@ -641,13 +641,11 @@ impl Graphics<'_> {
         self.sdl_context.borrow().timer().unwrap().ticks()
     }
 
-    fn draw_level_viewport(&self) {}
-
     fn start_tracking_tender_delta_time(&mut self) {
         self.g_render_delta_time = self.get_time();
     }
 
-    fn updateRenderDeltaTime(&mut self) -> u32 {
+    fn update_render_delta_time(&mut self) -> u32 {
         let duration = self.get_time() - self.g_render_delta_time;
         self.g_render_delta_time = self.get_time();
         duration
