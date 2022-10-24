@@ -233,7 +233,7 @@ impl Graphics {
 
     /// Load chars bitmap
     fn read_bitmap_fonts(&mut self) {
-        let path = format!("{}/{}T", RESSOURCES_PATH, G_CHARS6_DAT_FILENAME);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_CHARS6_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
@@ -255,7 +255,7 @@ impl Graphics {
         }
         self.g_chars_6_bitmap_font = Box::new(data[0..K_BITMAP_FONT_LENGTH].try_into().unwrap());
 
-        let path = format!("{}/{}T", RESSOURCES_PATH, G_CHARS8_DAT_FILENAME);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_CHARS8_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
