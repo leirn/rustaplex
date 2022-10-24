@@ -52,7 +52,7 @@ impl Game {
 
         self.generate_random_seed_from_clock();
 
-        self.load_all_ressources();
+        self.load_all_ressources(); // Equivalent to Read everything
 
         // Start main loop
         self.run();
@@ -86,7 +86,20 @@ impl Game {
         }
     }
 
-    fn load_all_ressources(&self) {}
+    fn load_all_ressources(&mut self) {
+        self.read_levels_lst();
+        self.read_demo_files();
+        self.read_hall_fame_lst();
+        self.read_players_lst();
+    }
+
+    fn read_levels_lst(&mut self) {}
+
+    fn read_demo_files(&mut self) {}
+
+    fn read_hall_fame_lst(&mut self) {}
+
+    fn read_players_lst(&mut self) {}
 
     fn init_audio(&self) {}
     fn init_controller(&self) {}
