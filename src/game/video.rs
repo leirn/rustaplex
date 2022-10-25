@@ -76,20 +76,6 @@ impl Video<'_> {
             .build()
             .unwrap();
 
-        _canvas.set_draw_color(Color::RGB(255, 210, 0));
-
-        // A draw a rectangle which almost fills our window with it !
-        // Mainly for debugging purpose
-        _canvas
-            .fill_rect(Rect::new(
-                10,
-                10,
-                K_SCREEN_WIDTH as u32 - 20,
-                K_SCREEN_HEIGHT as u32 - 20,
-            ))
-            .unwrap();
-        _canvas.present();
-
         let surface = Surface::new(
             K_SCREEN_WIDTH as u32,
             K_SCREEN_HEIGHT as u32,
@@ -104,7 +90,6 @@ impl Video<'_> {
                 (3 * K_SCREEN_HEIGHT).try_into().unwrap(),
             )
             .unwrap();
-
         Video {
             //video_subsystem: _video_subsystem,
             g_renderer: _canvas,
