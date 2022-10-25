@@ -39,7 +39,7 @@ pub const K_LEVEL_LIST_DATA_LENGTH: usize = K_NUMBER_OF_LEVEL * K_LIST_LEVEL_NAM
 pub const K_CONFIG_DATA_LENGTH: usize = 4;
 
 pub const RESSOURCES_PATH: &str = "resources";
-pub const AUDIO_RESSOURCES_PATH: &str = "resources/audio";
+pub const K_BASE_AUDIO_FOLDER: &str = "audio";
 
 // Général file names
 pub const G_CONFIG_FILE_NAME: &str = "SUPAPLEX.CFG";
