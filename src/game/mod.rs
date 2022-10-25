@@ -152,44 +152,27 @@ impl Game<'_> {
                 } else {
                     self.demo_manager.g_is_playing_demo = false;
                 }
+
+                /*
+                gShouldUpdateTotalLevelTime = 0;
+                gHasUserCheated = 1;
+                memcpy(&gSPDemoFileName[3], "---", 3);
+                startDirectlyFromLevel(1);
+                continue;
+                */
+            } else {
+                /*
+                levelNumberForcedToLoad = gIsForcedLevel;
+                gIsForcedLevel = 0;
+                gIsPlayingDemo = 0;
+
+                if (levelNumberForcedToLoad > 0)
+                {
+                    convertLevelNumberTo3DigitStringWithPadding0(levelNumberForcedToLoad);
+                }
+                */
             }
-
             /*
-                    uint8_t levelNumberForcedToLoad = 0;
-
-                    if (gIsSPDemoAvailableToRun == 2)
-                    {
-                        gIsSPDemoAvailableToRun = 1;
-                        if (fileIsDemo == 1)
-                        {
-                            playDemo(0);
-                        }
-                        else
-                        {
-            //loc_46FDF:              //; CODE XREF: start+3B5j
-                            gIsPlayingDemo = 0;
-                        }
-
-            //loc_46FE4:              //; CODE XREF: start+3BDj
-                        gShouldUpdateTotalLevelTime = 0;
-                        gHasUserCheated = 1;
-                        memcpy(&gSPDemoFileName[3], "---", 3);
-            //loc_4701A:              //; CODE XREF: start+3DDj start+433j
-                        startDirectlyFromLevel(1);
-                        continue;
-                    }
-                    else
-                    {
-            //loc_46FFF:              //; CODE XREF: start+3A9j
-                        levelNumberForcedToLoad = gIsForcedLevel;
-                        gIsForcedLevel = 0;
-                        gIsPlayingDemo = 0;
-
-                        if (levelNumberForcedToLoad > 0)
-                        {
-                            convertLevelNumberTo3DigitStringWithPadding0(levelNumberForcedToLoad);
-                        }
-                    }
 
                     if (levelNumberForcedToLoad > 0)
                     {
@@ -213,59 +196,54 @@ impl Game<'_> {
                 break;
             }
             /* TODO later since only in second cycle
-                        self.read_levels();
-                        self.graphics.fade_to_palette(G_BLACK_PALETTE);
-                        self.g_is_game_busy = false;
-                        self.draw_player_list();
-                        self.initialize_game_info();
-                        self.draw_fixed_level();
-                        self.draw_game_panel(); // 01ED:0311
-                        let number_of_infotrons: u16 = self.convert_to_easy_tiles();
-                        self.reset_number_of_infotrons(number_of_infotrons);
-                        self.find_murphy();
-                        gCurrentPanelHeight = kPanelBitmapHeight;
-                        drawCurrentLevelViewport(gCurrentPanelHeight); // Added by me
-                        fadeToPalette(gGamePalette); // At this point the screen fades in and shows the game
+            self.read_levels();
+            self.graphics.fade_to_palette(G_BLACK_PALETTE);
+            self.g_is_game_busy = false;
+            self.draw_player_list();
+            self.initialize_game_info();
+            self.draw_fixed_level();
+            self.draw_game_panel(); // 01ED:0311
+            let number_of_infotrons: u16 = self.convert_to_easy_tiles();
+            self.reset_number_of_infotrons(number_of_infotrons);
+            self.find_murphy();
+            gCurrentPanelHeight = kPanelBitmapHeight;
+            drawCurrentLevelViewport(gCurrentPanelHeight); // Added by me
+            fadeToPalette(gGamePalette); // At this point the screen fades in and shows the game
 
-                        if self.sounds.is_music_enabled == false
-                        {
-                            self.sounds.stop_music();
-                        }
+            if self.sounds.is_music_enabled == false
+            {
+                self.sounds.stop_music();
+            }
 
-            //loc_46F77:              //; CODE XREF: start+352j
-                        self.g_is_game_busy = true;
-                        self.run_level();
-                        gIsSPDemoAvailableToRun = 0;
-                        if (gShouldExitGame != 0)
-                        {
-                            break; // goto loc_47067;
-                        }
+            self.g_is_game_busy = true;
+            self.run_level();
+            gIsSPDemoAvailableToRun = 0;
+            if (gShouldExitGame != 0)
+            {
+                break; // goto loc_47067;
+            }
 
-            //loc_46F8E:              //; CODE XREF: start+369j
-                        if (gFastMode != FastModeTypeNone)
-                        {
-                            break;
-                        }
+            if (gFastMode != FastModeTypeNone)
+            {
+                break;
+            }
 
-            //isNotFastMode2:              //; CODE XREF: start+373j
-                        slideDownGameDash(); // 01ED:0351
-                        if (byte_59B71 != 0)
-                        {
-                            loadMurphySprites();
-                        }
+            slideDownGameDash(); // 01ED:0351
+            if (byte_59B71 != 0)
+            {
+                loadMurphySprites();
+            }
 
-            //loc_46FA5:              //; CODE XREF: start+380j
-                        gIsGameBusy = 0;
-                        if (gShouldExitGame != 0)
-                        {
-                            break; // goto loc_47067;
-                        }
+            gIsGameBusy = 0;
+            if (gShouldExitGame != 0)
+            {
+                break; // goto loc_47067;
+            }
 
-            //loc_46FB4:              //; CODE XREF: start+38Fj
-                        if (isMusicEnabled == 0)
-                        {
-                            playMusicIfNeeded();
-                        }*/
+            if (isMusicEnabled == 0)
+            {
+                playMusicIfNeeded();
+            }*/
 
             self.graphics.video_loop();
 
