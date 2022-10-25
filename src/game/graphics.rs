@@ -831,6 +831,16 @@ impl Graphics<'_> {
 
             self.video_loop();
         }
+
+        let copy_offset = K_EDGE_TOP_Y as usize * K_SCREEN_WIDTH;
+        //memcpy(gScreenPixels + copyOffset, gTitle2DecodedBitmapData + copyOffset, sizeof(gTitle2DecodedBitmapData) - copyOffset);
+        for i in 0..(K_FULL_SCREEN_FRAMEBUFFER_LENGTH - copy_offset) {
+            let color = self.video.borrow_mut().get_pixel(copy_offset);
+            self.video.borrow_mut().set_pixel(copy_offset, color); // Move panel edge
+        }
+
+        let title2_palette = Graphics::convert_palette_data_to_palette(G_TITLE2_PALETTE_DATA);
+        self.fade_to_palette(title2_palette);
     }
 }
 /*
