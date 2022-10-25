@@ -690,6 +690,47 @@ impl Graphics<'_> {
         }
     }
 
+    pub fn draw_text_with_chars6_font_with_transparent_background(
+        &mut self,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        if text.len() == 0 {
+            return;
+        }
+        for idx in 0..text.len() {
+            //for character in text.bytes().into_iter() {
+            let character = text.as_bytes()[idx];
+            if character == 0x0a {
+                // equivalent to '\n'
+                return;
+            }
+            // ' ' = 0x20 = 32, and is first ascii that can be represented.
+            // This line converts the ascii from the string to the index in the font
+            let bitmap_character_index = character - 0x20;
+
+            for y in 0..K_BITMAP_FONT_CHARACTER_HEIGHT {
+                for x in 0..K_BITMAP_FONT_CHARACTER_6_WIDTH {
+                    let bitmap_character_row = self.g_chars_6_bitmap_font[bitmap_character_index
+                        as usize
+                        + y * K_NUMBER_OF_CHARACTERS_IN_BITMAP_FONT];
+                    let pixel_value = (bitmap_character_row >> (7 - x)) & 0x1;
+
+                    if pixel_value == 1 {
+                        // 6 is the wide (in pixels) of this font
+                        let dest_address = (dest_y + y) * K_SCREEN_WIDTH
+                            + (idx * K_BITMAP_FONT_CHARACTER_6_WIDTH + dest_x + x);
+                        self.video
+                            .borrow_mut()
+                            .set_pixel(dest_address, color * pixel_value);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn open_credits_block(&mut self) {
         const K_EDGE_WIDTH: u32 = 13;
         const K_EDGE_HEIGHT: u32 = 148;

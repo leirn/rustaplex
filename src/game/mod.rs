@@ -348,6 +348,21 @@ impl Game<'_> {
             .draw_text_with_chars6_font_with_opaque_background(dest_x, dest_y, color, text);
     }
 
+    fn draw_text_with_chars6_font_with_transparent_background_if_possible(
+        &mut self,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        if self.g_is_game_busy {
+            return;
+        }
+
+        self.graphics
+            .draw_text_with_chars6_font_with_transparent_background(dest_x, dest_y, color, text);
+    }
+
     /// Initalise tile states
     fn init_game_state_data(&mut self) {
         // Initialize game state with the same values as in the original game
