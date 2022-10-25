@@ -80,4 +80,9 @@ impl Level {
             unused: [0; 4],
         }
     }
+
+    pub fn from_raw(raw_data: [u8; K_LEVEL_DATA_LENGTH]) -> Level {
+        // TODO : make a real implementation
+        Level::new()
+    }
 }
