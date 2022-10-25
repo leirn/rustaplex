@@ -1,6 +1,7 @@
 mod globals;
 pub mod graphics;
 mod level;
+mod sounds;
 mod utils;
 pub mod video;
 
@@ -8,6 +9,7 @@ use globals::*;
 use graphics::{Graphics, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA, G_TITLE_PALETTE_DATA};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
+use sounds::Sounds;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -20,6 +22,7 @@ use video::Video;
 use crate::game::graphics::K_SCREEN_WIDTH;
 
 pub struct Game<'a> {
+    sounds: Sounds,
     graphics: Graphics<'a>,
     video: Rc<RefCell<Video<'a>>>,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
@@ -31,6 +34,7 @@ pub struct Game<'a> {
     g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
     g_is_game_busy: bool,
+    is_joystick_enabled: bool,
 }
 
 impl Game<'_> {
@@ -38,6 +42,7 @@ impl Game<'_> {
         let sdl_context = Rc::new(RefCell::new(sdl2::init().unwrap()));
         let video = Rc::new(RefCell::new(Video::init(sdl_context.clone())));
         Game {
+            sounds: Sounds::new(sdl_context.clone()),
             video: video.clone(),
             graphics: Graphics::init(video.clone(), sdl_context.clone()),
             sdl_context: sdl_context,
@@ -51,6 +56,7 @@ impl Game<'_> {
             g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
                 .map(|_| HallOfFameEntry::new()),
             g_is_game_busy: false,
+            is_joystick_enabled: false,
         }
     }
 
@@ -97,6 +103,9 @@ impl Game<'_> {
             //drawSpeedFixCredits();   // credits below the block (herman perk and elmer productions) // 01ED:02C5
             self.draw_speed_fix_credits();
         }
+
+        self.read_config();
+
         // Start main loop
         self.run();
     }
@@ -361,6 +370,74 @@ impl Game<'_> {
 
         self.graphics
             .draw_text_with_chars6_font_with_transparent_background(dest_x, dest_y, color, text);
+    }
+
+    fn activate_combined_sound(&self) {
+        /*stopMusicAndSounds();
+        setSoundType(SoundTypeRoland, SoundTypeSoundBlaster);
+        playMusicIfNeeded();
+        gCurrentSoundPriority = 0;
+        gCurrentSoundDuration = 0;*/
+    }
+
+    fn default_config(&mut self) {
+        self.activate_combined_sound();
+        self.sounds.is_music_enabled = true;
+        self.sounds.is_fx_enabled = true;
+        self.is_joystick_enabled = false;
+    }
+
+    fn read_config(&mut self) {
+        let path = format!("{}/{}", RESSOURCES_PATH, G_CONFIG_FILE_NAME);
+        let cfg_file_path = Path::new(&path);
+        match cfg_file_path.try_exists().expect(
+            format!(
+                "Can't check existence of file {}",
+                G_HALL_OF_FAME_LST_FILENAME
+            )
+            .as_str(),
+        ) {
+            true => (),
+            false => {
+                self.default_config();
+                return;
+            } // No player file found
+        };
+        let mut file = match File::open(cfg_file_path) {
+            Ok(file) => file,
+            Err(_) => {
+                self.default_config();
+                return;
+            } // Error while reading config file
+        };
+
+        let mut buffer = [0_u8; K_CONFIG_DATA_LENGTH];
+        match file.read(&mut buffer) {
+            Ok(number_of_bytes_read) => {
+                if number_of_bytes_read < K_CONFIG_DATA_LENGTH {
+                    self.default_config();
+                    return;
+                }
+            }
+            Err(_) => {
+                self.default_config();
+                return;
+            }
+        }
+
+        let sound_setting = buffer[0] as char;
+        match sound_setting {
+            's' => self.sounds.activate_internal_samples_sound(),
+            'a' => self.sounds.activate_adlib_sound(),
+            'b' => self.sounds.activate_sound_blaster_sound(),
+            'r' => self.sounds.activate_roland_sound(),
+            'c' => self.sounds.activate_combined_sound(),
+            _ => self.sounds.activate_internal_standard_sound(),
+        }
+
+        self.is_joystick_enabled = buffer[1] as char == 'j';
+        self.sounds.is_music_enabled = buffer[2] as char == 'm';
+        self.sounds.is_fx_enabled = buffer[3] as char == 'x';
     }
 
     /// Initalise tile states

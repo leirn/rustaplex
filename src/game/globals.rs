@@ -19,9 +19,13 @@ pub const K_LEVEL_NAME_LENGTH: usize = 24;
 
 pub const K_LEVEL_LIST_DATA_LENGTH: usize = K_NUMBER_OF_LEVEL * K_LIST_LEVEL_NAME_LENGTH;
 
+pub const K_CONFIG_DATA_LENGTH: usize = 4;
+
 pub const RESSOURCES_PATH: &str = "resources";
+pub const AUDIO_RESSOURCES_PATH: &str = "resources/audio";
 
 // Général file names
+pub const G_CONFIG_FILE_NAME: &str = "SUPAPLEX.CFG";
 pub const G_LEVELS_DAT_FILENAME: &str = "LEVELS.DAT";
 pub const G_LEVELS_LST_FILENAME: &str = "LEVEL.LST";
 pub const G_PLAYERS_LST_FILENAME: &str = "PLAYER.LST";
