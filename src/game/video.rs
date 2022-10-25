@@ -75,6 +75,8 @@ impl Video<'_> {
         )
         .unwrap();
 
+        _canvas.window_mut().set_size((3 * K_SCREEN_WIDTH).try_into().unwrap(), (3 * K_SCREEN_HEIGHT).try_into().unwrap()).unwrap();
+
         Video {
             //video_subsystem: _video_subsystem,
             g_renderer: _canvas,
