@@ -36,11 +36,11 @@ pub struct DemoManager {
 
     g_demos: Demos,
 
-    g_current_demo_level_name: [char; K_LIST_LEVEL_NAME_LENGTH],
+    g_current_demo_level_name: String,
 
-    recording_demo_message: [char; K_LIST_LEVEL_NAME_LENGTH],
+    recording_demo_message: String,
 
-    g_selected_original_demo_level_number : usize,
+    g_selected_original_demo_level_number: usize,
     demo_file_name: String,
     g_demo0_bin_filename: String,
 }
@@ -53,13 +53,55 @@ impl DemoManager {
             file_is_demo: false,
             g_is_playing_demo: false,
             g_demo_current_input_index: 0,
-            g_current_demo_level_name: [' '; K_LIST_LEVEL_NAME_LENGTH],
+            g_current_demo_level_name: String::from(".SP\0----- DEMO LEVEL! -----"),
             g_demo_random_seeds: [0; K_NUMBER_OF_DEMOS],
             g_demos: Demos::new(),
-            k_original_demo_file_sizes: [0; K_NUMBER_OF_DEMOS],
-            k_original_demo_first_file_chunks: [FirstOriginalDemoFileChunk::default();
-                K_NUMBER_OF_DEMOS],
-            recording_demo_message: [' '; K_LIST_LEVEL_NAME_LENGTH],
+            k_original_demo_file_sizes: [
+                0x00cE, 0x016a, 0x0146, 0x00cd, 0x024d, 0x012c, 0x01a7, 0x01fb, 0x01d2, 0x02fd,
+            ],
+            k_original_demo_first_file_chunks: [
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x01,
+                    first_user_inputs: [0xf0, 0xf0, 0xf1],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x03,
+                    first_user_inputs: [0xf0, 0x50, 0xf3],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x07,
+                    first_user_inputs: [0xf0, 0x60, 0xf4],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x0B,
+                    first_user_inputs: [0xf0, 0xf0, 0xf0],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x1D,
+                    first_user_inputs: [0xf0, 0xf0, 0xf0],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x26,
+                    first_user_inputs: [0xf0, 0xf0, 0x50],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x37,
+                    first_user_inputs: [0xf0, 0xd0, 0x41],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x5F,
+                    first_user_inputs: [0x10, 0xf3, 0xf3],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x68,
+                    first_user_inputs: [0xf0, 0xf0, 0x10],
+                },
+                FirstOriginalDemoFileChunk {
+                    level_number: 0x6C,
+                    first_user_inputs: [0x10, 0xf4, 0x94],
+                },
+            ],
+            recording_demo_message: String::from("--- RECORDING DEMO0 ---"),
             g_selected_original_demo_level_number: 0,
             demo_file_name: String::new(),
             g_demo0_bin_filename: String::from("DEMO0.BIN"),
@@ -88,13 +130,12 @@ impl DemoManager {
             self.g_selected_original_demo_level_number = 0;
             let mut filename = self.g_demo0_bin_filename.as_str();
 
-            if self.g_is_sp_demo_available_to_run ==1 {
+            if self.g_is_sp_demo_available_to_run == 1 {
                 filename = self.demo_file_name.as_str();
-            }
-            else {
-
+            } else {
                 let value = ('0' as u8 + i as u8) as char;
-                self.g_demo0_bin_filename.replace_range(4..5, String::from(value).as_str());
+                self.g_demo0_bin_filename
+                    .replace_range(4..5, String::from(value).as_str());
             }
             /*
 
@@ -232,8 +273,8 @@ impl DemoManager {
 
 #[derive(Default, Clone, Copy)]
 struct FirstOriginalDemoFileChunk {
-    pub levelNumber: u8,
-    pub firstUserInputs: [u8; 3],
+    pub level_number: u8,
+    pub first_user_inputs: [u8; 3],
 }
 
 const K_MAX_DEMO_INPUT_STEPS: usize = 48648;
