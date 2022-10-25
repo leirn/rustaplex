@@ -21,6 +21,8 @@ use video::Video;
 
 use crate::game::graphics::K_SCREEN_WIDTH;
 
+use self::graphics::G_BLACK_PALETTE;
+
 pub struct Game<'a> {
     sounds: Sounds,
     graphics: Graphics<'a>,
@@ -105,6 +107,7 @@ impl Game<'_> {
         }
 
         self.read_config();
+        self.graphics.fade_to_palette(G_BLACK_PALETTE);
 
         // Start main loop
         self.run();
