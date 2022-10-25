@@ -300,8 +300,8 @@ impl Sounds<'_> {
         let filename = format!("{}/music-{}.xm", K_BASE_AUDIO_FOLDER, music_suffix);
 
         let chunk: RWops<'static> = sdl2::rwops::RWops::from_file(filename, "r").unwrap();
-        let chunk: Result<Music<'static>, String> = chunk.load_music();
-        self.g_music = chunk.ok();
+        //let chunk: Result<Music<'static>, String> = chunk.load_music();
+        //self.g_music = chunk.ok();
     }
 
     fn load_sounds(&mut self) {
