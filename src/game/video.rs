@@ -1,14 +1,14 @@
 use super::graphics::G_BLACK_PALETTE;
 use super::graphics::{self, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use crate::game::globals;
 use crate::game::graphics::ColorPalette;
 use sdl2::pixels::{Color, Palette, PixelFormatEnum};
 use sdl2::rect::{Point, Rect};
 use sdl2::render::{Texture, TextureCreator};
 use sdl2::surface::Surface;
-use sdl2::video::{FullscreenType, DisplayMode};
+use sdl2::video::{DisplayMode, FullscreenType};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::game::globals;
 
 #[derive(PartialEq, Clone, Copy)]
 enum ScalingMode {
@@ -32,7 +32,12 @@ pub struct Video<'a> {
 impl Video<'_> {
     pub fn init(sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Video<'static> {
         let _video_subsystem = sdl_context.borrow_mut().video().unwrap();
-        let display_mode = DisplayMode::new(PixelFormatEnum::Index8, K_SCREEN_WIDTH as i32, K_SCREEN_HEIGHT as i32, 60);
+        let display_mode = DisplayMode::new(
+            PixelFormatEnum::Index8,
+            K_SCREEN_WIDTH as i32,
+            K_SCREEN_HEIGHT as i32,
+            60,
+        );
         let mut _window = _video_subsystem
             .window(
                 globals::WINDOW_TITLE,
@@ -75,7 +80,13 @@ impl Video<'_> {
         )
         .unwrap();
 
-        _canvas.window_mut().set_size((3 * K_SCREEN_WIDTH).try_into().unwrap(), (3 * K_SCREEN_HEIGHT).try_into().unwrap()).unwrap();
+        _canvas
+            .window_mut()
+            .set_size(
+                (3 * K_SCREEN_WIDTH).try_into().unwrap(),
+                (3 * K_SCREEN_HEIGHT).try_into().unwrap(),
+            )
+            .unwrap();
 
         Video {
             //video_subsystem: _video_subsystem,
@@ -208,6 +219,10 @@ impl Video<'_> {
         self.g_screen_surface.without_lock_mut().unwrap()[address] = color;
     }
 
+    pub fn get_pixel(&mut self, address: usize) -> u8 {
+        self.g_screen_surface.without_lock_mut().unwrap()[address]
+    }
+
     pub fn set_color_palette(&mut self, palette: ColorPalette) {
         self.g_color_palette = palette.clone();
         let palette = Palette::with_colors(&palette).unwrap();
@@ -232,7 +247,7 @@ impl Video<'_> {
         let texture = self.g_screen_surface.as_texture(&creator).unwrap();
 
         self.g_renderer
-        .copy(&texture, None, self.g_renderer.viewport());
+            .copy(&texture, None, self.g_renderer.viewport());
         //SDL_RenderCopy(gRenderer, gTexture, NULL, &gWindowViewport);
     }
 
@@ -240,4 +255,3 @@ impl Video<'_> {
         self.g_renderer.present();
     }
 }
-

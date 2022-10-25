@@ -17,6 +17,8 @@ use std::thread::sleep;
 use std::time::Duration;
 use video::Video;
 
+use crate::game::graphics::K_SCREEN_WIDTH;
+
 pub struct Game<'a> {
     graphics: Graphics<'a>,
     video: Rc<RefCell<Video<'a>>>,
@@ -28,6 +30,7 @@ pub struct Game<'a> {
     g_level_list_data: [String; K_NUMBER_OF_LEVEL_WITH_PADDING],
     g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
+    g_is_game_busy: bool,
 }
 
 impl Game<'_> {
@@ -47,6 +50,7 @@ impl Game<'_> {
             g_player_list_data: [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new()),
             g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
                 .map(|_| HallOfFameEntry::new()),
+            g_is_game_busy: false,
         }
     }
 
@@ -86,10 +90,12 @@ impl Game<'_> {
         {
             // Opening sequence
             self.load_screen_2();
-            //readEverything(); // 01ED:02BC
-            //drawSpeedFixTitleAndVersion(); // 01ED:02BF
+            //readEverything(); // already done when loaded graphics component
+            self.draw_speed_fix_title_and_version();
+            self.graphics.open_credits_block();
             //openCreditsBlock(); // credits inside the block // 01ED:02C2
             //drawSpeedFixCredits();   // credits below the block (herman perk and elmer productions) // 01ED:02C5
+            self.draw_speed_fix_credits();
         }
         // Start main loop
         self.run();
@@ -98,6 +104,8 @@ impl Game<'_> {
     fn run(&mut self) {
         let mut continuer = true;
         while continuer {
+            self.graphics.video_loop();
+
             let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
             for event in event_pump.poll_iter() {
                 match event {
@@ -288,11 +296,57 @@ impl Game<'_> {
         }
     }
 
-    fn init_audio(&self) {}
-    fn init_controller(&self) {}
+    fn draw_speed_fix_title_and_version(&mut self) {
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            102,
+            11,
+            1,
+            format!("{} VERSION {}", GAME_NAME, VERSION_STRING),
+        );
+    }
 
-    fn init_video(&self) {}
-    fn init_logging(&self) {}
+    fn draw_speed_fix_credits(&mut self) // showNewCredits  proc near       ; CODE XREF: start+2ECp
+    {
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            60,
+            168,
+            0xE,
+            String::from("VERSIONS 1-4 + 6.X BY HERMAN PERK"),
+        );
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            60,
+            176,
+            0xE,
+            String::from("VERSIONS 5.X BY ELMER PRODUCTIONS"),
+        );
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            60,
+            184,
+            0xE,
+            String::from("  VERSION 7.X BY SERGIO PADRINO  "),
+        );
+
+        self.graphics.video_loop();
+        /*
+        while (isAnyKeyPressed() == 0
+               && isAnyGameControllerButtonPressed() == 0);*/
+        // TODO : wait for kpress
+    }
+
+    fn draw_text_with_chars6_font_with_opaque_background_if_possible(
+        &mut self,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        if self.g_is_game_busy {
+            return;
+        }
+
+        self.graphics
+            .draw_text_with_chars6_font_with_opaque_background(dest_x, dest_y, color, text);
+    }
 
     /// Initalise tile states
     fn init_game_state_data(&mut self) {

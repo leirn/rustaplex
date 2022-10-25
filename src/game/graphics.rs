@@ -350,7 +350,7 @@ impl Graphics<'_> {
     }
 
     pub fn read_and_render_title1_dat(&mut self) {
-        let path = format!("{}/{}", RESSOURCES_PATH, G_TITLE2_DAT_FILENAME);
+        let path = format!("{}/{}", RESSOURCES_PATH, G_TITLE1_DAT_FILENAME);
         let menu_file_path = Path::new(&path);
         match menu_file_path
             .try_exists()
@@ -641,14 +641,138 @@ impl Graphics<'_> {
         self.sdl_context.borrow().timer().unwrap().ticks()
     }
 
-    fn start_tracking_tender_delta_time(&mut self) {
+    pub fn start_tracking_tender_delta_time(&mut self) {
         self.g_render_delta_time = self.get_time();
     }
 
-    fn update_render_delta_time(&mut self) -> u32 {
+    pub fn update_render_delta_time(&mut self) -> u32 {
         let duration = self.get_time() - self.g_render_delta_time;
         self.g_render_delta_time = self.get_time();
         duration
+    }
+
+    pub fn draw_text_with_chars6_font_with_opaque_background(
+        &mut self,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        if text.len() == 0 {
+            return;
+        }
+        for idx in 0..text.len() {
+            //for character in text.bytes().into_iter() {
+            let character = text.as_bytes()[idx];
+            if character == 0x0a {
+                // equivalent to '\n'
+                return;
+            }
+            // ' ' = 0x20 = 32, and is first ascii that can be represented.
+            // This line converts the ascii from the string to the index in the font
+            let bitmap_character_index = character - 0x20;
+
+            for y in 0..K_BITMAP_FONT_CHARACTER_HEIGHT {
+                for x in 0..K_BITMAP_FONT_CHARACTER_6_WIDTH {
+                    let bitmap_character_row = self.g_chars_6_bitmap_font[bitmap_character_index
+                        as usize
+                        + y * K_NUMBER_OF_CHARACTERS_IN_BITMAP_FONT];
+                    let pixel_value = (bitmap_character_row >> (7 - x)) & 0x1;
+
+                    // 6 is the wide (in pixels) of this font
+                    let dest_address = (dest_y + y) * K_SCREEN_WIDTH
+                        + (idx * K_BITMAP_FONT_CHARACTER_6_WIDTH + dest_x + x);
+                    self.video
+                        .borrow_mut()
+                        .set_pixel(dest_address, color * pixel_value);
+                }
+            }
+        }
+    }
+
+    pub fn open_credits_block(&mut self) {
+        const K_EDGE_WIDTH: u32 = 13;
+        const K_EDGE_HEIGHT: u32 = 148;
+        const K_EDGE_STEP: u32 = 4;
+        const K_EDGE_TOP_Y: u32 = 26;
+        const K_NUMBER_OF_FRAMES: u32 = 60;
+
+        const K_ANIMATION_DURATION: u32 = K_NUMBER_OF_FRAMES * 1000 / 70; // ~429 ms
+
+        let mut animation_time: u32 = 0;
+
+        const K_INITIAL_LEFT_EDGE_X: u32 = 147;
+        const K_INITIAL_RIGHT_EDGE_X: u32 = K_INITIAL_LEFT_EDGE_X + K_EDGE_WIDTH + 1;
+
+        const K_EDGE_ANIMATION_DISTANCE: u32 = (K_EDGE_STEP * K_NUMBER_OF_FRAMES) / 2 + 1;
+
+        let mut left_edge_x = K_INITIAL_LEFT_EDGE_X;
+        let mut right_edge_x = K_INITIAL_RIGHT_EDGE_X;
+
+        self.start_tracking_tender_delta_time();
+
+        while animation_time < K_ANIMATION_DURATION {
+            animation_time += self.update_render_delta_time();
+            animation_time = std::cmp::min(animation_time, K_ANIMATION_DURATION);
+
+            let animation_factor = animation_time as f64 / K_ANIMATION_DURATION as f64;
+
+            let previous_left_edge_x = left_edge_x;
+            let previous_right_edge_x = right_edge_x;
+
+            let distance = (K_EDGE_ANIMATION_DISTANCE as f64 * animation_factor) as u32;
+
+            left_edge_x = K_INITIAL_LEFT_EDGE_X - distance;
+            right_edge_x = K_INITIAL_RIGHT_EDGE_X + distance;
+
+            let left_edge_step = previous_left_edge_x - left_edge_x;
+            let right_edge_step = right_edge_x - previous_right_edge_x;
+
+            // This loop moves both edges of the panel, and fills the inside of the panel with the contents of TITLE2.DAT
+            for y in K_EDGE_TOP_Y..(K_EDGE_TOP_Y + K_EDGE_HEIGHT) {
+                // Left edge
+                for x in left_edge_x..(previous_left_edge_x + K_EDGE_WIDTH - left_edge_step) {
+                    let addr = y as usize * K_SCREEN_WIDTH + x as usize;
+                    let color = self
+                        .video
+                        .borrow_mut()
+                        .get_pixel(addr + left_edge_step as usize);
+                    self.video.borrow_mut().set_pixel(addr, color); // Move panel edge
+                }
+
+                // Content of visible panel unveiled by left edge
+                for x in (left_edge_x + K_EDGE_WIDTH)..(previous_left_edge_x + K_EDGE_WIDTH + 1) {
+                    let addr = y as usize * K_SCREEN_WIDTH + x as usize;
+                    self.video
+                        .borrow_mut()
+                        .set_pixel(addr, self.g_title2_decoded_bitmap_data[addr]);
+                }
+
+                // Right edge
+                let mut x = previous_right_edge_x;
+                while x > right_edge_x + K_EDGE_WIDTH
+                //for x in (rightEdgeX + kEdgeWidth)..previousRightEdgeX // --
+                {
+                    x -= 1;
+                    let addr = y as usize * K_SCREEN_WIDTH + x as usize;
+                    let color = self
+                        .video
+                        .borrow_mut()
+                        .get_pixel(addr - right_edge_step as usize);
+                    self.video.borrow_mut().set_pixel(addr, color); // Move panel edge
+                }
+
+                // Content of visible panel unveiled by right edge
+                for x in previous_right_edge_x..right_edge_x {
+                    let addr = y as usize * K_SCREEN_WIDTH + x as usize;
+                    self.video
+                        .borrow_mut()
+                        .set_pixel(addr, self.g_title2_decoded_bitmap_data[addr]);
+                }
+            }
+
+            self.video_loop();
+        }
     }
 }
 /*
@@ -689,6 +813,9 @@ const K_FIXED_BITMAP_WIDTH: usize = 460;
 const K_FIXED_BITMAP_HEIGHT: usize = 16;
 const K_PANEL_BITMAP_WIDTH: usize = 320;
 const K_PANEL_BITMAP_HEIGHT: usize = 24;
+
+const K_BITMAP_FONT_CHARACTER_HEIGHT: usize = 7;
+const K_BITMAP_FONT_CHARACTER_6_WIDTH: usize = 6;
 
 pub type ColorPalette = [Color; K_NUMBER_OF_COLORS];
 type ColorPaletteData = [u8; K_PALETTE_DATA_SIZE];

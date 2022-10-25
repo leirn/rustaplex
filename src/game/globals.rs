@@ -1,3 +1,6 @@
+pub const VERSION_STRING: &str = "0.1";
+pub const GAME_NAME: &str = "RUSTAPLEX";
+
 pub const WINDOW_TITLE: &str = "Rustaplex";
 
 pub const K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING: usize = 344;
