@@ -122,8 +122,11 @@ impl Game<'_> {
             //drawSpeedFixCredits();   // credits below the block (herman perk and elmer productions) // 01ED:02C5
             self.draw_speed_fix_credits();
         }
-
         self.read_config();
+
+        // Wait for a key press to proceed
+        self.wait_for_key_press();
+
         self.graphics.fade_to_palette(G_BLACK_PALETTE);
 
         // Start main loop
@@ -158,6 +161,25 @@ impl Game<'_> {
                 }
             }
         }
+    }
+
+    fn wait_for_key_press(&mut self) {
+        let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
+        loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::KeyUp {..} =>return,
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Q),
+                    ..
+                } => std::process::exit(0),
+                _ => (),
+            }
+
+            sleep(Duration::from_millis(10))
+        }
+    }
     }
 
     fn handle_system_events(&mut self) {
