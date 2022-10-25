@@ -41,7 +41,7 @@ use crate::game::graphics::K_SCREEN_WIDTH;
 use self::graphics::G_BLACK_PALETTE;
 
 pub struct Game<'a> {
-    sounds: Sounds,
+    sounds: Sounds<'a>,
     graphics: Graphics<'a>,
     video: Rc<RefCell<Video<'a>>>,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,

@@ -18,6 +18,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use sdl2::mixer::Chunk;
+use sdl2::mixer::{LoaderRWops, Music};
+use sdl2::rwops::RWops;
+
 use crate::game::globals::*;
 
 const K_ROLAND_SOUND_FILENAME_SUFFIX: &str = "roland";
@@ -62,7 +66,7 @@ enum SoundEffect {
     SoundEffectCount,
 }
 
-pub struct Sounds {
+pub struct Sounds<'a> {
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     pub is_music_enabled: bool,
     pub is_fx_enabled: bool,
@@ -72,10 +76,12 @@ pub struct Sounds {
     mus_type: SoundType,
     g_current_sound_channel: i32,
     g_is_audio_initialized: bool,
+    g_music: Option<Music<'a>>,
+    g_sound_effect_chunks: [Option<Chunk>; SOUND_EFFECT_COUNT],
 }
 
-impl Sounds {
-    pub fn new(sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Sounds {
+impl Sounds<'_> {
+    pub fn new(sdl_context: Rc<RefCell<sdl2::Sdl>>) -> Sounds<'static> {
         // https://github.com/Rust-SDL2/rust-sdl2/blob/master/examples/mixer-demo.rs
         // https://lib.rs/crates/sdl2_mixer
         Sounds {
@@ -88,11 +94,13 @@ impl Sounds {
             mus_type: SoundType::SoundTypeInternalStandard,
             g_current_sound_channel: -1,
             g_is_audio_initialized: false,
+            g_music: None,
+            g_sound_effect_chunks: [(); SOUND_EFFECT_COUNT].map(|_| None),
         }
     }
 }
 
-impl Sounds {
+impl Sounds<'_> {
     pub fn sound_shutdown(&mut self) {
         self.stop_music_and_sounds();
     }
@@ -291,12 +299,9 @@ impl Sounds {
 
         let filename = format!("{}/music-{}.xm", K_BASE_AUDIO_FOLDER, music_suffix);
 
-        /*gMusic = Mix_LoadMUS(filename);
-
-        if (gMusic == NULL) {
-            spLogInfo("Unable to load music file: %s\n", Mix_GetError());
-            return;
-        }*/
+        let chunk: RWops<'static> = sdl2::rwops::RWops::from_file(filename, "r").unwrap();
+        let chunk: Result<Music<'static>, String> = chunk.load_music();
+        self.g_music = chunk.ok();
     }
 
     fn load_sounds(&mut self) {
@@ -319,7 +324,9 @@ impl Sounds {
                 "{}/{}-{}.wav",
                 K_BASE_AUDIO_FOLDER, G_SOUND_EFFECT_NAMES[i], effects_suffix
             );
-            // gSoundEffectChunks[i] = Mix_LoadWAV(filename);
+            let chunk = sdl2::rwops::RWops::from_file(filename, "r").unwrap();
+            let chunk = chunk.load_wav().unwrap();
+            self.g_sound_effect_chunks[i] = Some(chunk);
         }
     }
 }
