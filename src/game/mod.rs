@@ -5,7 +5,7 @@ mod utils;
 pub mod video;
 
 use globals::*;
-use graphics::{Graphics, G_TITLE_PALETTE_DATA, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA};
+use graphics::{Graphics, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA, G_TITLE_PALETTE_DATA};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use std::cell::RefCell;
@@ -13,6 +13,8 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::rc::Rc;
+use std::thread::sleep;
+use std::time::Duration;
 use video::Video;
 
 pub struct Game<'a> {
@@ -71,17 +73,23 @@ impl Game<'_> {
             self.graphics.read_and_render_title_dat();
             let title_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE_PALETTE_DATA);
             self.graphics.fade_to_palette(title_dat_palette);
+
+            // sleep a little to enjoy it
+            for _ in 0..200 {
+                self.handle_system_events();
+                sleep(Duration::from_millis(10));
+            }
         }
 
         self.load_all_ressources(); // Equivalent to Read everything
 
         {
-        // Opening sequence
-        self.load_screen_2();
-        //readEverything(); // 01ED:02BC
-        //drawSpeedFixTitleAndVersion(); // 01ED:02BF
-        //openCreditsBlock(); // credits inside the block // 01ED:02C2
-        //drawSpeedFixCredits();   // credits below the block (herman perk and elmer productions) // 01ED:02C5
+            // Opening sequence
+            self.load_screen_2();
+            //readEverything(); // 01ED:02BC
+            //drawSpeedFixTitleAndVersion(); // 01ED:02BF
+            //openCreditsBlock(); // credits inside the block // 01ED:02C2
+            //drawSpeedFixCredits();   // credits below the block (herman perk and elmer productions) // 01ED:02C5
         }
         // Start main loop
         self.run();
@@ -111,6 +119,20 @@ impl Game<'_> {
                     }
                     _ => (),
                 }
+            }
+        }
+    }
+
+    fn handle_system_events(&mut self) {
+        let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Q),
+                    ..
+                } => std::process::exit(0),
+                _ => (),
             }
         }
     }
