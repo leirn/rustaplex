@@ -46,7 +46,6 @@ pub const G_CONFIG_FILE_NAME: &str = "SUPAPLEX.CFG";
 pub const G_LEVELS_LST_FILENAME: &str = "LEVEL.LST";
 pub const G_PLAYERS_LST_FILENAME: &str = "PLAYER.LST";
 pub const G_HALL_OF_FAME_LST_FILENAME: &str = "HALLFAME.LST";
-pub const G_DEMO0_BIN_FILENAME: &str = "DEMO0.BIN";
 pub const G_SAVEGAME_SAV_FILENAME: &str = "SAVEGAME.SAV";
 
 // Graphic file names

@@ -39,6 +39,10 @@ pub struct DemoManager {
     g_current_demo_level_name: [char; K_LIST_LEVEL_NAME_LENGTH],
 
     recording_demo_message: [char; K_LIST_LEVEL_NAME_LENGTH],
+
+    g_selected_original_demo_level_number : usize,
+    demo_file_name: String,
+    g_demo0_bin_filename: String,
 }
 impl DemoManager {
     pub fn new() -> DemoManager {
@@ -56,6 +60,9 @@ impl DemoManager {
             k_original_demo_first_file_chunks: [FirstOriginalDemoFileChunk::default();
                 K_NUMBER_OF_DEMOS],
             recording_demo_message: [' '; K_LIST_LEVEL_NAME_LENGTH],
+            g_selected_original_demo_level_number: 0,
+            demo_file_name: String::new(),
+            g_demo0_bin_filename: String::from("DEMO0.BIN"),
         }
     }
 
@@ -73,148 +80,149 @@ impl DemoManager {
 
     pub fn read_demo_files(&mut self) -> u8 {
         self.g_demo_current_input_index = 0;
+
+        self.g_demos.demo_first_indices = [0xffff; K_NUMBER_OF_DEMOS + 1];
         //word_5A33C = 0;
 
-        /* memset(&gDemos.demoFirstIndices, 0xFF, sizeof(gDemos.demoFirstIndices)); // fills 11 words (22 bytes) with 0xFFFF
+        for i in 0..K_NUMBER_OF_DEMOS {
+            self.g_selected_original_demo_level_number = 0;
+            let mut filename = self.g_demo0_bin_filename.as_str();
 
-            for i in 0..K_NUMBER_OF_DEMOS
-            {
-        //loc_47629:              //; CODE XREF: readDemoFiles+175j
-                gSelectedOriginalDemoLevelNumber = 0;
-                char *filename = gDemo0BinFilename;
+            if self.g_is_sp_demo_available_to_run ==1 {
+                filename = self.demo_file_name.as_str();
+            }
+            else {
 
-                if (gIsSPDemoAvailableToRun == 1)
-                {
-                    filename = demoFileName;
-                }
-                else
-                {
-        //loc_4763C:             // ; CODE XREF: readDemoFiles+2Cj
-                    gDemo0BinFilename[4] = '0' + i; // Replaces the number in "DEMO0.BIN" with the right value
-                }
+                let value = ('0' as u8 + i as u8) as char;
+                self.g_demo0_bin_filename.replace_range(4..5, String::from(value).as_str());
+            }
+            /*
 
-        //loc_47647:             // ; CODE XREF: readDemoFiles+31j
-                FILE *file = openWritableFileWithReadonlyFallback(filename, "rb");
-                if (file == NULL)
-                {
-                    return i;
-                }
 
-        //loc_47651:              //; CODE XREF: readDemoFiles+43j
-                if (gIsSPDemoAvailableToRun == 1)
-                {
-                    if (gSelectedOriginalDemoFromCommandLineLevelNumber == 0)
+            //loc_47647:             // ; CODE XREF: readDemoFiles+31j
+                    FILE *file = openWritableFileWithReadonlyFallback(filename, "rb");
+                    if (file == NULL)
                     {
-                        fseek(file, kLevelDataLength, SEEK_SET);
-                    }
-                }
-                else
-                {
-        //loc_47674:             // ; CODE XREF: readDemoFiles+52j
-                    int result = fseek(file, 0, SEEK_END);
-                    long fileSize = ftell(file);
-
-                    // this is probably to support old level formats
-                    if (result == 0
-                        && fileSize < kLevelDataLength)
-                    {
-                        gSelectedOriginalDemoLevelNumber = getLevelNumberFromOriginalDemoFile(file, fileSize);
-                    }
-
-        //loc_47690:             // ; CODE XREF: readDemoFiles+76j readDemoFiles+7Aj ...
-                    fseek(file, 0, SEEK_SET);
-
-                    if (gSelectedOriginalDemoLevelNumber == 0)
-                    {
-                        Level *level = &gDemos.level[i];
-                        size_t bytes = fileReadBytes(level, kLevelDataLength, file);
-
-                        if (bytes < kLevelDataLength)
-                        {
-                            return i;
-                        }
-
-        //loc_476D3:           //   ; CODE XREF: readDemoFiles+C5j
-                        gDemoRandomSeeds[i] = level->randomSeed;
-                    }
-                }
-
-        //loc_476DB:             // ; CODE XREF: readDemoFiles+59j readDemoFiles+69j ...
-                uint16_t maxNumberOfBytesToRead = kMaxDemoInputSteps + 1; // 48649
-                maxNumberOfBytesToRead -= gDemoCurrentInputIndex;
-
-                if (maxNumberOfBytesToRead > kMaxDemoInputSteps + 1) // weird way of checking if gDemoCurrentInputIndex < 0 ????
-                {
-                    maxNumberOfBytesToRead = 0;
-                }
-
-                uint16_t numberOfDemoBytesRead = 0;
-
-        //loc_476EA:             // ; CODE XREF: readDemoFiles+DDj
-                if (maxNumberOfBytesToRead == 0)
-                {
-                    numberOfDemoBytesRead = 0;
-                }
-                else
-                {
-        //loc_476F3:              // ; CODE XREF: readDemoFiles+E4j
-                    numberOfDemoBytesRead = fileReadBytes(&gDemos.demoData[gDemoCurrentInputIndex], maxNumberOfBytesToRead, file);
-
-                    if (numberOfDemoBytesRead == 0)
-                    {
-                        if (fclose(file) != 0)
-                        {
-                            exitWithError("Error closing DEMO file");
-                        }
                         return i;
                     }
 
-        //loc_47719:             // ; CODE XREF: readDemoFiles+FCj
-                }
-
-        //loc_4771A:             // ; CODE XREF: readDemoFiles+E8j
-                if (fclose(file) != 0)
-                {
-                    exitWithError("Error closing DEMO file");
-                }
-
-        //loc_47729:              ; CODE XREF: readDemoFiles+11Bj
-                gDemos.demoData[gDemoCurrentInputIndex] = gDemos.demoData[gDemoCurrentInputIndex] & 0x7F; // this removes the MSB from the levelNumber that was added in the speed fix mods
-                int isZero = (gSelectedOriginalDemoLevelNumber == 0);
-                gSelectedOriginalDemoLevelNumber = 0;
-                if (isZero)
-                {
-                    gDemos.demoData[gDemoCurrentInputIndex] = gDemos.demoData[gDemoCurrentInputIndex] | 0x80; // This sets the MSB?? maybe the "interpreter" later needs it
-                }
-
-        //loc_47743:             // ; CODE XREF: readDemoFiles+134j
-                uint16_t demoLastByteIndex = gDemoCurrentInputIndex + numberOfDemoBytesRead - 1;
-                // cx = bx; // bx here has the value of gDemoCurrentInputIndex
-                // bx += numberOfDemoBytesRead; // ax here has the number of bytes read regarding the level itself (levelNumber + inputSteps)
-                // push(ds);
-                // push(es);
-                // pop(ds);
-                // assume ds:nothing
-                // bx--;
-                if (demoLastByteIndex == 0xFFFF // this would mean bx was 0. is this possible?
-                    || numberOfDemoBytesRead <= 1 // this means the demo is empty (only has levelNumber or nothing)
-                    || gDemos.demoData[demoLastByteIndex] != 0xFF)
-                {
-        //loc_4775A:             // ; CODE XREF: readDemoFiles+145j
-                   // ; readDemoFiles+14Aj
-                    if (demoLastByteIndex < sizeof(BaseDemo))
+            //loc_47651:              //; CODE XREF: readDemoFiles+43j
+                    if (gIsSPDemoAvailableToRun == 1)
                     {
-                        numberOfDemoBytesRead++;
-                        gDemos.demoData[demoLastByteIndex + 1] = 0xFF;
+                        if (gSelectedOriginalDemoFromCommandLineLevelNumber == 0)
+                        {
+                            fseek(file, kLevelDataLength, SEEK_SET);
+                        }
                     }
-                }
+                    else
+                    {
+            //loc_47674:             // ; CODE XREF: readDemoFiles+52j
+                        int result = fseek(file, 0, SEEK_END);
+                        long fileSize = ftell(file);
 
-        //loc_47765:             // ; CODE XREF: readDemoFiles+14Fj
-                           // ; readDemoFiles+155j
-                gDemos.demoFirstIndices[i] = gDemoCurrentInputIndex;
-                gDemoCurrentInputIndex += numberOfDemoBytesRead;
-            }
-        */
+                        // this is probably to support old level formats
+                        if (result == 0
+                            && fileSize < kLevelDataLength)
+                        {
+                            gSelectedOriginalDemoLevelNumber = getLevelNumberFromOriginalDemoFile(file, fileSize);
+                        }
+
+            //loc_47690:             // ; CODE XREF: readDemoFiles+76j readDemoFiles+7Aj ...
+                        fseek(file, 0, SEEK_SET);
+
+                        if (gSelectedOriginalDemoLevelNumber == 0)
+                        {
+                            Level *level = &gDemos.level[i];
+                            size_t bytes = fileReadBytes(level, kLevelDataLength, file);
+
+                            if (bytes < kLevelDataLength)
+                            {
+                                return i;
+                            }
+
+            //loc_476D3:           //   ; CODE XREF: readDemoFiles+C5j
+                            gDemoRandomSeeds[i] = level->randomSeed;
+                        }
+                    }
+
+            //loc_476DB:             // ; CODE XREF: readDemoFiles+59j readDemoFiles+69j ...
+                    uint16_t maxNumberOfBytesToRead = kMaxDemoInputSteps + 1; // 48649
+                    maxNumberOfBytesToRead -= gDemoCurrentInputIndex;
+
+                    if (maxNumberOfBytesToRead > kMaxDemoInputSteps + 1) // weird way of checking if gDemoCurrentInputIndex < 0 ????
+                    {
+                        maxNumberOfBytesToRead = 0;
+                    }
+
+                    uint16_t numberOfDemoBytesRead = 0;
+
+            //loc_476EA:             // ; CODE XREF: readDemoFiles+DDj
+                    if (maxNumberOfBytesToRead == 0)
+                    {
+                        numberOfDemoBytesRead = 0;
+                    }
+                    else
+                    {
+            //loc_476F3:              // ; CODE XREF: readDemoFiles+E4j
+                        numberOfDemoBytesRead = fileReadBytes(&gDemos.demoData[gDemoCurrentInputIndex], maxNumberOfBytesToRead, file);
+
+                        if (numberOfDemoBytesRead == 0)
+                        {
+                            if (fclose(file) != 0)
+                            {
+                                exitWithError("Error closing DEMO file");
+                            }
+                            return i;
+                        }
+
+            //loc_47719:             // ; CODE XREF: readDemoFiles+FCj
+                    }
+
+            //loc_4771A:             // ; CODE XREF: readDemoFiles+E8j
+                    if (fclose(file) != 0)
+                    {
+                        exitWithError("Error closing DEMO file");
+                    }
+
+            //loc_47729:              ; CODE XREF: readDemoFiles+11Bj
+                    gDemos.demoData[gDemoCurrentInputIndex] = gDemos.demoData[gDemoCurrentInputIndex] & 0x7F; // this removes the MSB from the levelNumber that was added in the speed fix mods
+                    int isZero = (gSelectedOriginalDemoLevelNumber == 0);
+                    gSelectedOriginalDemoLevelNumber = 0;
+                    if (isZero)
+                    {
+                        gDemos.demoData[gDemoCurrentInputIndex] = gDemos.demoData[gDemoCurrentInputIndex] | 0x80; // This sets the MSB?? maybe the "interpreter" later needs it
+                    }
+
+            //loc_47743:             // ; CODE XREF: readDemoFiles+134j
+                    uint16_t demoLastByteIndex = gDemoCurrentInputIndex + numberOfDemoBytesRead - 1;
+                    // cx = bx; // bx here has the value of gDemoCurrentInputIndex
+                    // bx += numberOfDemoBytesRead; // ax here has the number of bytes read regarding the level itself (levelNumber + inputSteps)
+                    // push(ds);
+                    // push(es);
+                    // pop(ds);
+                    // assume ds:nothing
+                    // bx--;
+                    if (demoLastByteIndex == 0xFFFF // this would mean bx was 0. is this possible?
+                        || numberOfDemoBytesRead <= 1 // this means the demo is empty (only has levelNumber or nothing)
+                        || gDemos.demoData[demoLastByteIndex] != 0xFF)
+                    {
+            //loc_4775A:             // ; CODE XREF: readDemoFiles+145j
+                       // ; readDemoFiles+14Aj
+                        if (demoLastByteIndex < sizeof(BaseDemo))
+                        {
+                            numberOfDemoBytesRead++;
+                            gDemos.demoData[demoLastByteIndex + 1] = 0xFF;
+                        }
+                    }
+
+            //loc_47765:             // ; CODE XREF: readDemoFiles+14Fj
+                               // ; readDemoFiles+155j
+                    gDemos.demoFirstIndices[i] = gDemoCurrentInputIndex;
+                    gDemoCurrentInputIndex += numberOfDemoBytesRead;
+
+                    */
+        }
+
         K_NUMBER_OF_DEMOS as u8
     }
 }
@@ -264,7 +272,7 @@ struct Demos {
 impl Demos {
     pub fn new() -> Demos {
         Demos {
-            demo_first_indices: [0; K_NUMBER_OF_DEMOS + 1],
+            demo_first_indices: [0xff; K_NUMBER_OF_DEMOS + 1],
             demo_data: [(); 1 + K_MAX_DEMO_INPUT_STEPS + 1].map(|_| 0),
             level: [Level::new(); K_NUMBER_OF_DEMOS],
         }
