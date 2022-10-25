@@ -15,13 +15,15 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+mod demo;
 mod globals;
 pub mod graphics;
-mod level;
+pub mod level;
 mod sounds;
 mod utils;
 pub mod video;
 
+use demo::DemoManager;
 use globals::*;
 use graphics::{Graphics, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA, G_TITLE_PALETTE_DATA};
 use sdl2::event::{Event, WindowEvent};
@@ -35,8 +37,6 @@ use std::rc::Rc;
 use std::thread::sleep;
 use std::time::Duration;
 use video::Video;
-
-use crate::game::graphics::K_SCREEN_WIDTH;
 
 use self::graphics::G_BLACK_PALETTE;
 
@@ -54,6 +54,7 @@ pub struct Game<'a> {
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
     g_is_game_busy: bool,
     is_joystick_enabled: bool,
+    demo_manager: DemoManager,
 }
 
 impl Game<'_> {
@@ -76,6 +77,7 @@ impl Game<'_> {
                 .map(|_| HallOfFameEntry::new()),
             g_is_game_busy: false,
             is_joystick_enabled: false,
+            demo_manager: DemoManager::new(),
         }
     }
 
@@ -95,6 +97,12 @@ impl Game<'_> {
 
         self.generate_random_seed_from_clock();
 
+        self.splash_and_opening();
+        // Start main loop
+        self.run();
+    }
+
+    fn splash_and_opening(&mut self) {
         self.initialize_fade_palette();
         {
             // Display welcome grahpic
@@ -125,17 +133,140 @@ impl Game<'_> {
         self.read_config();
 
         // Wait for a key press to proceed
-        self.wait_for_key_press();
+        self.wait_for_key_press_or_mouse_click();
 
+        // Back in black
         self.graphics.fade_to_palette(G_BLACK_PALETTE);
-
-        // Start main loop
-        self.run();
     }
 
     fn run(&mut self) {
-        let mut continuer = true;
-        while continuer {
+        let mut should_quit_the_game = false;
+        while should_quit_the_game {
+            self.demo_manager.prepare_demo_recording_filename();
+            let level_number_forced_to_load = 0_u8;
+
+            if self.demo_manager.g_is_sp_demo_available_to_run == 2 {
+                self.demo_manager.g_is_sp_demo_available_to_run = 1;
+                if self.demo_manager.file_is_demo {
+                    self.play_demo(0);
+                } else {
+                    self.demo_manager.g_is_playing_demo = false;
+                }
+            }
+
+            /*
+                    uint8_t levelNumberForcedToLoad = 0;
+
+                    if (gIsSPDemoAvailableToRun == 2)
+                    {
+                        gIsSPDemoAvailableToRun = 1;
+                        if (fileIsDemo == 1)
+                        {
+                            playDemo(0);
+                        }
+                        else
+                        {
+            //loc_46FDF:              //; CODE XREF: start+3B5j
+                            gIsPlayingDemo = 0;
+                        }
+
+            //loc_46FE4:              //; CODE XREF: start+3BDj
+                        gShouldUpdateTotalLevelTime = 0;
+                        gHasUserCheated = 1;
+                        memcpy(&gSPDemoFileName[3], "---", 3);
+            //loc_4701A:              //; CODE XREF: start+3DDj start+433j
+                        startDirectlyFromLevel(1);
+                        continue;
+                    }
+                    else
+                    {
+            //loc_46FFF:              //; CODE XREF: start+3A9j
+                        levelNumberForcedToLoad = gIsForcedLevel;
+                        gIsForcedLevel = 0;
+                        gIsPlayingDemo = 0;
+
+                        if (levelNumberForcedToLoad > 0)
+                        {
+                            convertLevelNumberTo3DigitStringWithPadding0(levelNumberForcedToLoad);
+                        }
+                    }
+
+                    if (levelNumberForcedToLoad > 0)
+                    {
+            //loc_4701A:              //; CODE XREF: start+3DDj start+433j
+                        startDirectlyFromLevel(levelNumberForcedToLoad);
+                        continue;
+                    }
+
+            //loc_4704B:              //; CODE XREF: start+3EEj start+3F2j
+                    if (gShouldStartFromSavedSnapshot != 0)
+                    {
+            //loc_4701A:              //; CODE XREF: start+3DDj start+433j
+                        startDirectlyFromLevel(1);
+                        continue;
+                    }
+                    gHasUserCheated = 0;
+                    runMainMenu();
+            */
+
+            if should_quit_the_game {
+                break;
+            }
+            /* TODO later since only in second cycle
+                        self.read_levels();
+                        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+                        self.g_is_game_busy = false;
+                        self.draw_player_list();
+                        self.initialize_game_info();
+                        self.draw_fixed_level();
+                        self.draw_game_panel(); // 01ED:0311
+                        let number_of_infotrons: u16 = self.convert_to_easy_tiles();
+                        self.reset_number_of_infotrons(number_of_infotrons);
+                        self.find_murphy();
+                        gCurrentPanelHeight = kPanelBitmapHeight;
+                        drawCurrentLevelViewport(gCurrentPanelHeight); // Added by me
+                        fadeToPalette(gGamePalette); // At this point the screen fades in and shows the game
+
+                        if self.sounds.is_music_enabled == false
+                        {
+                            self.sounds.stop_music();
+                        }
+
+            //loc_46F77:              //; CODE XREF: start+352j
+                        self.g_is_game_busy = true;
+                        self.run_level();
+                        gIsSPDemoAvailableToRun = 0;
+                        if (gShouldExitGame != 0)
+                        {
+                            break; // goto loc_47067;
+                        }
+
+            //loc_46F8E:              //; CODE XREF: start+369j
+                        if (gFastMode != FastModeTypeNone)
+                        {
+                            break;
+                        }
+
+            //isNotFastMode2:              //; CODE XREF: start+373j
+                        slideDownGameDash(); // 01ED:0351
+                        if (byte_59B71 != 0)
+                        {
+                            loadMurphySprites();
+                        }
+
+            //loc_46FA5:              //; CODE XREF: start+380j
+                        gIsGameBusy = 0;
+                        if (gShouldExitGame != 0)
+                        {
+                            break; // goto loc_47067;
+                        }
+
+            //loc_46FB4:              //; CODE XREF: start+38Fj
+                        if (isMusicEnabled == 0)
+                        {
+                            playMusicIfNeeded();
+                        }*/
+
             self.graphics.video_loop();
 
             let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
@@ -145,7 +276,7 @@ impl Game<'_> {
                     | Event::KeyDown {
                         keycode: Some(Keycode::Q),
                         ..
-                    } => continuer = false,
+                    } => should_quit_the_game = true,
                     Event::KeyUp {
                         keycode: Some(Keycode::F),
                         ..
@@ -163,23 +294,23 @@ impl Game<'_> {
         }
     }
 
-    fn wait_for_key_press(&mut self) {
+    fn wait_for_key_press_or_mouse_click(&mut self) {
         let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
         loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::KeyUp {..} =>return,
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Q),
-                    ..
-                } => std::process::exit(0),
-                _ => (),
-            }
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::KeyUp { .. } | Event::MouseButtonUp { .. } => return,
+                    Event::Quit { .. }
+                    | Event::KeyDown {
+                        keycode: Some(Keycode::Q),
+                        ..
+                    } => std::process::exit(0),
+                    _ => (),
+                }
 
-            sleep(Duration::from_millis(10))
+                sleep(Duration::from_millis(10))
+            }
         }
-    }
     }
 
     fn handle_system_events(&mut self) {
@@ -194,6 +325,44 @@ impl Game<'_> {
                 _ => (),
             }
         }
+    }
+
+    fn play_demo(&mut self, demo_index: u16) {
+        self.demo_manager.read_demo_files();
+
+        /* gRandomGeneratorSeed = gDemoRandomSeeds[demo_index];
+            gShouldLeaveMainMenu = 1;
+            gIsPlayingDemo = 1;
+
+            let demo_first_index; u16 = gDemos.demoFirstIndices[demo_index];
+            if (demo_first_index == 0xFFFF)
+            {
+                gShouldLeaveMainMenu = 0;
+                gIsPlayingDemo = 0;
+            }
+
+        //loc_4B22F:              ; CODE XREF: playDemo+30j
+            gSelectedOriginalDemoLevelNumber = 0;
+
+            uint8_t demoLevelNumber = gDemos.demoData[demoFirstIndex];
+            uint8_t finalLevelNumber = demoIndex;
+
+            if (demoLevelNumber <= kNumberOfLevels // 111
+                && demoLevelNumber != 0)
+            {
+                finalLevelNumber = demoLevelNumber;
+                gSelectedOriginalDemoLevelNumber = (gSelectedOriginalDemoLevelNumber & 0xFF00) | finalLevelNumber; // mov byte ptr gSelectedOriginalDemoLevelNumber, al
+            }
+
+        //loc_4B248:              ; CODE XREF: playDemo+4Bj
+        //                ; playDemo+4Fj
+            gDemoIndexOrDemoLevelNumber = finalLevelNumber;
+
+            demoFirstIndex++; // To skip the level number
+            gDemoCurrentInputIndex = demoFirstIndex;
+            word_5A33C = demoFirstIndex;
+            gDemoCurrentInput = UserInputNone;
+            gDemoCurrentInputRepeatCounter = 1;*/
     }
 
     fn load_all_ressources(&mut self) {
@@ -220,17 +389,28 @@ impl Game<'_> {
         self.g_level_list_data[K_LAST_LEVEL_INDEX + 1] =
             String::from("---- UNBELIEVEABLE!!!! ----");
 
-        let path = format!("{}/{}", RESSOURCES_PATH, G_LEVELS_DAT_FILENAME);
+        let path = format!(
+            "{}/{}",
+            RESSOURCES_PATH, self.demo_manager.g_levels_dat_filename
+        );
         let level_lst_file_path = Path::new(&path);
-        match level_lst_file_path
-            .try_exists()
-            .expect(format!("Can't check existence of file {}", G_LEVELS_DAT_FILENAME).as_str())
-        {
+        match level_lst_file_path.try_exists().expect(
+            format!(
+                "Can't check existence of file {}",
+                self.demo_manager.g_levels_dat_filename
+            )
+            .as_str(),
+        ) {
             true => (),
             false => panic!("{:?} doesn't exists", level_lst_file_path.canonicalize()),
         }
-        let mut file = File::open(level_lst_file_path)
-            .expect(format!("Error while opening {}", G_LEVELS_DAT_FILENAME).as_str());
+        let mut file = File::open(level_lst_file_path).expect(
+            format!(
+                "Error while opening {}",
+                self.demo_manager.g_levels_dat_filename
+            )
+            .as_str(),
+        );
 
         let mut file_data = [0_u8; K_LEVEL_NAME_LENGTH - 1];
 

@@ -279,7 +279,7 @@ impl Sounds<'_> {
 
     fn play_music(&mut self) {}
 
-    fn stop_music(&mut self) {}
+    pub fn stop_music(&mut self) {}
 
     fn load_music(&mut self) {
         if self.g_is_audio_initialized == false {

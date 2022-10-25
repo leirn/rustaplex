@@ -43,7 +43,6 @@ pub const K_BASE_AUDIO_FOLDER: &str = "audio";
 
 // Général file names
 pub const G_CONFIG_FILE_NAME: &str = "SUPAPLEX.CFG";
-pub const G_LEVELS_DAT_FILENAME: &str = "LEVELS.DAT";
 pub const G_LEVELS_LST_FILENAME: &str = "LEVEL.LST";
 pub const G_PLAYERS_LST_FILENAME: &str = "PLAYER.LST";
 pub const G_HALL_OF_FAME_LST_FILENAME: &str = "HALLFAME.LST";
@@ -169,3 +168,20 @@ pub const K_HALL_OF_FAME_ENTRY_SIZE: usize = K_PLAYER_NAME_LENGTH + 1 + 3;
 pub const K_PLAYER_NAME_LENGTH: usize = 8;
 pub const K_NUMBER_OF_PLAYERS: usize = 20;
 pub const K_NUMBER_OF_HALL_OF_FAME_ENTRIES: usize = 3;
+
+#[derive(Default, Clone, Copy)]
+pub struct SpecialPortInfo {
+    // If (x,y) are the coordinates of a port in the field
+    // and (0,0) is the top-left corner, the 16 bit value
+    // here calculates as 2*(x+(y*60)).  This is twice of
+    // what you may have expected: Supaplex works with a
+    // game field in memory, which is 2 bytes per sprite.
+    pub position: u16,
+
+    pub gravity: u8,       // 1 = turn on, anything else (0) = turn off
+    pub freeze_zonks: u8,   // 2 = turn on, anything else (0) = turn off  (1=off!)
+    pub freeze_enemies: u8, // 1 = turn on, anything else (0) = turn off
+    pub unused: u8,        // Doesn't matter: is ignored.
+}
+
+pub const K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS: usize = 10;
