@@ -19,9 +19,7 @@ use super::graphics::G_BLACK_PALETTE;
 use super::graphics::{self, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
 use crate::game::globals;
 use crate::game::graphics::ColorPalette;
-use sdl2::pixels::{Color, Palette, PixelFormatEnum};
-use sdl2::rect::{Point, Rect};
-use sdl2::render::{Texture, TextureCreator};
+use sdl2::pixels::{Palette, PixelFormatEnum};
 use sdl2::surface::Surface;
 use sdl2::video::{DisplayMode, FullscreenType};
 use std::cell::RefCell;
@@ -70,7 +68,6 @@ impl Video<'_> {
 
         let mut _canvas = _window
             .into_canvas()
-            .present_vsync()
             .index(Video::find_sdl_gl_driver().unwrap())
             .present_vsync()
             .build()
@@ -249,7 +246,8 @@ impl Video<'_> {
         let texture = self.g_screen_surface.as_texture(&creator).unwrap();
 
         self.g_renderer
-            .copy(&texture, None, self.g_renderer.viewport());
+            .copy(&texture, None, self.g_renderer.viewport())
+            .unwrap();
         //SDL_RenderCopy(gRenderer, gTexture, NULL, &gWindowViewport);
     }
 
