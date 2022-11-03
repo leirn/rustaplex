@@ -114,6 +114,12 @@ pub enum LevelTileType {
     LevelTileTypeCount,
 }
 
+pub enum PlayerLevelState {
+    PlayerLevelStateNotCompleted = 0,
+    PlayerLevelStateCompleted = 1,
+    PlayerLevelStateSkipped = 2,
+}
+
 pub struct PlayerEntry {
     pub name: String,
     pub hours: u8,
