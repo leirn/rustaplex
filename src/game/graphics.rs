@@ -748,7 +748,7 @@ impl Graphics<'_> {
         }
     }
 
-    pub fn drawTextWithChars8FontToBuffer(
+    pub fn draw_text_with_chars8_font_to_buffer(
         &mut self,
         buffer: DrawTextBuffer,
         dest_x: usize,
@@ -793,14 +793,14 @@ impl Graphics<'_> {
         }
     }
 
-    pub fn drawTextWithChars8Font(
+    pub fn draw_text_with_chars8_font(
         &mut self,
         dest_x: usize,
         dest_y: usize,
         color: u8,
         text: String,
     ) {
-        self.drawTextWithChars8FontToBuffer(
+        self.draw_text_with_chars8_font_to_buffer(
             DrawTextBuffer::G_SCREEN_PIXEL,
             dest_x,
             dest_y,
@@ -809,14 +809,14 @@ impl Graphics<'_> {
         );
     }
 
-    pub fn drawTextWithChars8FontToGamePanel(
+    pub fn draw_text_with_chars8_font_to_game_panel(
         &mut self,
         dest_x: usize,
         dest_y: usize,
         color: u8,
         text: String,
     ) {
-        self.drawTextWithChars8FontToBuffer(
+        self.draw_text_with_chars8_font_to_buffer(
             DrawTextBuffer::G_PANEL_RENDERED_BITMAP_DATA,
             dest_x,
             dest_y,
@@ -994,7 +994,7 @@ pub const G_TITLE2_PALETTE_DATA: ColorPaletteData = [
     0x00, 0x02, 0x0A, 0x01, 0x05, 0x05, 0x05, 0x08, 0x06, 0x06, 0x06, 0x08, 0x08, 0x08, 0x08, 0x07,
 ];
 
-enum DrawTextBuffer {
+pub enum DrawTextBuffer {
     G_SCREEN_PIXEL,
     G_PANEL_RENDERED_BITMAP_DATA,
 }
