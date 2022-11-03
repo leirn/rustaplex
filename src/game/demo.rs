@@ -110,7 +110,7 @@ impl DemoManager {
         }
     }
 
-    pub fn get_level_number_from_original_demo_file(&self, file: File, fileLength: u64) -> usize {
+    pub fn get_level_number_from_original_demo_file(&self, file: File, file_length: u64) -> usize {
         0
     }
 
@@ -194,27 +194,30 @@ impl DemoManager {
                 let mut data_buffer: Vec<u8> = vec![0; max_number_of_bytes_to_read as usize];
                 number_of_demo_bytes_read = file.read(&mut data_buffer).unwrap();
 
-                self.g_demos.demo_data[(self.g_demo_current_input_index as usize)..].copy_from_slice(data_buffer.as_slice());
+                self.g_demos.demo_data[(self.g_demo_current_input_index as usize)..]
+                    .copy_from_slice(data_buffer.as_slice());
 
                 if (number_of_demo_bytes_read == 0) {
                     return i as u8;
                 }
             }
-            self.g_demos.demo_data[self.g_demo_current_input_index as usize] = self.g_demos.demo_data[self.g_demo_current_input_index as usize] & 0x7f; // this removes the MSB from the levelNumber that was added in the speed fix mods
+            self.g_demos.demo_data[self.g_demo_current_input_index as usize] =
+                self.g_demos.demo_data[self.g_demo_current_input_index as usize] & 0x7f; // this removes the MSB from the levelNumber that was added in the speed fix mods
             let is_zero = self.g_selected_original_demo_level_number == 0;
             self.g_selected_original_demo_level_number = 0;
-            if is_zero
-            {
-                self.g_demos.demo_data[self.g_demo_current_input_index as usize] = self.g_demos.demo_data[self.g_demo_current_input_index as usize] | 0x80; // This sets the MSB?? maybe the "interpreter" later needs it
+            if is_zero {
+                self.g_demos.demo_data[self.g_demo_current_input_index as usize] =
+                    self.g_demos.demo_data[self.g_demo_current_input_index as usize] | 0x80;
+                // This sets the MSB?? maybe the "interpreter" later needs it
             }
 
-            let demo_last_byte_index = self.g_demo_current_input_index as usize + number_of_demo_bytes_read - 1;
+            let demo_last_byte_index =
+                self.g_demo_current_input_index as usize + number_of_demo_bytes_read - 1;
             if demo_last_byte_index == 0xffff // this would mean bx was 0. is this possible?
                 || number_of_demo_bytes_read <= 1 // this means the demo is empty (only has levelNumber or nothing)
                 || self.g_demos.demo_data[demo_last_byte_index] != 0xff
             {
-                if demo_last_byte_index < K_BASE_DEMO_SIZE
-                {
+                if demo_last_byte_index < K_BASE_DEMO_SIZE {
                     number_of_demo_bytes_read += 1;
                     self.g_demos.demo_data[demo_last_byte_index + 1] = 0xff;
                 }

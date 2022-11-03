@@ -15,6 +15,8 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+mod animation;
+mod button_borders;
 mod demo;
 mod globals;
 pub mod graphics;
