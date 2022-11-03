@@ -190,7 +190,10 @@ pub struct SpecialPortInfo {
 }
 
 impl SpecialPortInfo {
-    pub fn from_raw(raw_data: [u8; K_SPECIAL_PORT_STRUCT_SIZE]) -> SpecialPortInfo {
+    pub fn from_raw(raw_data: &[u8]) -> SpecialPortInfo {
+        if raw_data.len() != K_SPECIAL_PORT_STRUCT_SIZE {
+            panic!("Wrong input size !!!");
+        }
         SpecialPortInfo {
             position: ((raw_data[0] as u16) << 8) + raw_data[1] as u16,// LE or BE ?
             gravity: raw_data[2],

@@ -118,38 +118,43 @@ impl Level {
         level.random_seed =
             (raw_data[OFFSET_RANDOM_SEED] as u16) << 8 + raw_data[OFFSET_RANDOM_SEED + 1] as u16; // LE or BE ?
         level.special_ports_info[0] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_0..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_0)],
+            &raw_data[OFFSET_SP_0..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_0)],
         );
         level.special_ports_info[1] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_1..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_1)],
+            &raw_data[OFFSET_SP_1..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_1)],
         );
         level.special_ports_info[2] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_2..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_2)],
+            &raw_data[OFFSET_SP_2..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_2)],
         );
         level.special_ports_info[3] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_3..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_3)],
+            &raw_data[OFFSET_SP_3..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_3)],
         );
         level.special_ports_info[4] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_4..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_4)],
+            &raw_data[OFFSET_SP_4..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_4)],
         );
         level.special_ports_info[5] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_5..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_5)],
+            &raw_data[OFFSET_SP_5..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_5)],
         );
         level.special_ports_info[6] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_6..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_6)],
+            &raw_data[OFFSET_SP_6..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_6)],
         );
         level.special_ports_info[7] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_7..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_7)],
+            &raw_data[OFFSET_SP_7..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_7)],
         );
         level.special_ports_info[8] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_8..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_8)],
+            &raw_data[OFFSET_SP_8..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_8)],
         );
         level.special_ports_info[9] = SpecialPortInfo::from_raw(
-            raw_data[OFFSET_SP_9..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_9)],
+            &raw_data[OFFSET_SP_9..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_9)],
         );
 
-        level.tiles = raw_data[offset..(K_LEVEL_SIZE + offset)];
-        level.unused = raw_data[OFFSET_UNUSED..(4 + OFFSET_UNUSED)];
+        for i in 0..K_LEVEL_SIZE{
+            level.tiles[i] = raw_data[offset + i];
+        }
+
+        for i in 0..4{
+            level.unused[i] = raw_data[OFFSET_UNUSED + i];
+        }
 
         level
     }
