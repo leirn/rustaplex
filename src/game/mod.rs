@@ -698,17 +698,8 @@ impl Game<'_> {
         self.graphics
             .draw_text_with_chars6_font_with_transparent_background(dest_x, dest_y, color, text);
     }
-
-    fn activate_combined_sound(&self) {
-        /*stopMusicAndSounds();
-        setSoundType(SoundTypeRoland, SoundTypeSoundBlaster);
-        playMusicIfNeeded();
-        gCurrentSoundPriority = 0;
-        gCurrentSoundDuration = 0;*/
-    }
-
     fn default_config(&mut self) {
-        self.activate_combined_sound();
+        self.sounds.activate_combined_sound();
         self.sounds.is_music_enabled = true;
         self.sounds.is_fx_enabled = true;
         self.is_joystick_enabled = false;
