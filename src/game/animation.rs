@@ -12,11 +12,6 @@ pub struct MurphyAnimationDescriptor {
     current_frame: u16, // Not used in the original code, I will use it to keep track of the current animation frame
 }
 
-pub struct AnimationFrameCoordinates {
-    coordinates: [Point; 105],
-    number_of_coordinates: u8,
-}
-
 pub struct Point {
     x: u16,
     y: u16,
