@@ -189,4 +189,21 @@ pub struct SpecialPortInfo {
     pub unused: u8,         // Doesn't matter: is ignored.
 }
 
+impl SpecialPortInfo {
+    pub fn from_raw(raw_data: &[u8]) -> SpecialPortInfo {
+        if raw_data.len() != K_SPECIAL_PORT_STRUCT_SIZE {
+            panic!("Wrong input size !!!");
+        }
+        SpecialPortInfo {
+            position: ((raw_data[0] as u16) << 8) + raw_data[1] as u16,// LE or BE ?
+            gravity: raw_data[2],
+            freeze_zonks: raw_data[3],
+            freeze_enemies: raw_data[4],
+            unused: raw_data[5],
+        }
+    }
+}
+
+pub const K_SPECIAL_PORT_STRUCT_SIZE: usize = 6;
+
 pub const K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS: usize = 10;
