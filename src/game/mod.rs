@@ -25,9 +25,11 @@ mod sounds;
 mod utils;
 pub mod video;
 
+use animation::MurphyAnimationDescriptor;
 use demo::DemoManager;
 use globals::*;
 use graphics::{Graphics, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA, G_TITLE_PALETTE_DATA};
+use level::Level;
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use sounds::Sounds;
@@ -42,14 +44,138 @@ use video::Video;
 
 use self::graphics::G_BLACK_PALETTE;
 
+enum UserInput {
+    UserInputNone = 0,
+    UserInputUp = 1,
+    UserInputLeft = 2,
+    UserInputDown = 3,
+    UserInputRight = 4,
+    UserInputSpaceUp = 5,
+    UserInputSpaceLeft = 6,
+    UserInputSpaceDown = 7,
+    UserInputSpaceRight = 8,
+    UserInputSpaceOnly = 9,
+}
+
+struct GameStates {
+    g_current_level_state_with_padding:
+        [StatefulLevelTile; K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING], // 0x1584
+    g_current_level_state: StatefulLevelTile, // located at 0x1834, size is kLevelDataLength items
+    g_explosion_timers: [u8; K_LEVEL_DATA_LENGTH], // 0x2434
+    g_is_gravity_enabled: u8, // byte_5101C -> 1 = turn on, anything else (0) = turn off
+    g_are_zonks_frozen: u8,   // byte_51035 -> 2 = turn on, anything else (0) = turn off  (1=off!)
+    g_number_of_info_trons: u8, // 0xd26 -> byte_51036 -> this seems to be _inside_ of fileLevelData when a level is read
+    g_number_of_special_ports: u8, // 0xd27 -> byte_51037 this seems to be _inside_ of fileLevelData when a level is read, and it's numberOfSpecialPorts
+    g_random_seed: u16,            // word_51076
+    g_aux_game_seconds_20ms_accumulator: u8, // byte_510AF ->  -> accumulates game time. The total time is its value * 20ms, so when it reaches 50 it means 1 second. Used to increase the game time in the bottom panel
+    g_game_seconds: u8,                      // byte_510B0
+    g_game_minutes: u8,                      // byte_510B1
+    g_game_hours: u8,                        // byte_510B2
+    g_should_update_total_level_time: u8,    // byte_510B3
+    g_level_failed: bool,                    // byte_510BA
+    g_current_player_level_state: PlayerLevelState, // byte_510BB
+    g_is_explosion_started: bool, // byte_510C0 -> Set to 1 when an explosion is just created. Set back to 0 when _any_ of the explosions on the screen disappears.
+    g_should_show_game_panel: bool, // byte_510C1 -> 0DB1
+    g_toggle_game_panel_key_auto_repeat_counter: u8, // byte_510C2 -> 0DB2
+    g_murphy_tile_x: i16,         // word_510C3
+    g_murphy_tile_y: i16,         // word_510C5
+    g_murphy_previous_location: i16, // word_510C7
+    g_murphy_location: i16,
+    g_is_murphy_looking_left: bool,                // word_510CB
+    g_murphy_yawn_and_sleep_counter: u16,          // word_510CD
+    g_is_murphy_updated: bool,                     // word_510CF
+    g_should_kill_murphy: bool,                    // word_510D1
+    g_previous_user_input_was_none: bool, // byte_510D3 -> used to detect when to release the red disk
+    g_are_enemies_frozen: bool,           // byte_510D7 -> 1 = turn on, anything else (0) = turn off
+    g_scratch_gravity: bool, // byte_510D8 -> not sure what scratch gravity means exactly, but can be 0 (off) or 1 (on)
+    g_is_murphy_going_through_portal: bool, // word_510D9
+    g_planted_red_disk_countdown: u8, // byte_510DB
+    g_planted_red_disk_position: u16, // word_510DC
+    g_demo_current_input_index: u16, // word_510DF
+    g_demo_current_input: u8, // byte_510E1 -> 0xDD1
+    g_demo_current_input_repeat_counter: u8, // -> 0xDD2 -> byte_510E2
+    g_demo_index_or_demo_level_number: u16, // word_510E6
+    g_murphy_position_x: u16, // word_510E8
+    g_murphy_position_y: u16, // word_510EA
+    g_murphy_counter_to_start_push_animation: u16, // word_510EE -> also used in the "release red disk" animation
+    g_current_murphy_animation: MurphyAnimationDescriptor, // -> starts at 0x0DE0
+    g_number_of_remaining_infotrons: u8,           // byte_5195A
+    g_total_number_of_infotrons: u8,               // byte_5195B
+    g_number_of_remaining_red_disks: u8,           // byte_5195C
+    g_frame_counter: u16,                          // word_5195D -> 0x1268
+    g_terminal_max_frames_to_next_scroll: u8, // byte_5196A -> this is used to make the terminals scroll their screens faster after the yellow disks have been detonated
+    g_are_yellow_disks_detonated: u8,         // byte_5196B
+    g_should_leave_main_menu: u16,            // word_5196C
+    g_should_exit_level: u16,                 // word_51974
+    g_quit_level_countdown: u16, // word_51978 -> this is a counter to end the level after certain number of iterations (to let the game progress a bit before going back to the menu)
+    g_additional_info_in_game_panel_frame_counter: u8, // byte_5197C -> how many more frames the additional info in the game panel will be
+    g_current_level: Level,                            // 0x988B
+}
+
+impl GameStates {
+    pub fn new() -> GameStates {
+        GameStates {
+            g_current_level_state_with_padding: [StatefulLevelTile::default();
+                K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
+            g_current_level_state: StatefulLevelTile::default(),
+            g_explosion_timers: [0; K_LEVEL_DATA_LENGTH],
+            g_is_gravity_enabled: 0,
+            g_are_zonks_frozen: 0,
+            g_number_of_info_trons: 0,
+            g_number_of_special_ports: 0,
+            g_random_seed: 0,
+            g_aux_game_seconds_20ms_accumulator: 0,
+            g_game_seconds: 0,
+            g_game_minutes: 0,
+            g_game_hours: 0,
+            g_should_update_total_level_time: 0,
+            g_level_failed: false,
+            g_current_player_level_state: PlayerLevelState::PlayerLevelStateNotCompleted,
+            g_is_explosion_started: false,
+            g_should_show_game_panel: false,
+            g_toggle_game_panel_key_auto_repeat_counter: 0,
+            g_murphy_tile_x: 0,
+            g_murphy_tile_y: 0,
+            g_murphy_previous_location: 0,
+            g_murphy_location: 0,
+            g_is_murphy_looking_left: false,
+            g_murphy_yawn_and_sleep_counter: 0,
+            g_is_murphy_updated: false,
+            g_should_kill_murphy: false,
+            g_previous_user_input_was_none: false,
+            g_are_enemies_frozen: false,
+            g_scratch_gravity: false,
+            g_is_murphy_going_through_portal: false,
+            g_planted_red_disk_countdown: 0,
+            g_planted_red_disk_position: 0,
+            g_demo_current_input_index: 0,
+            g_demo_current_input: 0,
+            g_demo_current_input_repeat_counter: 0,
+            g_demo_index_or_demo_level_number: 0,
+            g_murphy_position_x: 0,
+            g_murphy_position_y: 0,
+            g_murphy_counter_to_start_push_animation: 0,
+            g_current_murphy_animation: MurphyAnimationDescriptor::default(),
+            g_number_of_remaining_infotrons: 0,
+            g_total_number_of_infotrons: 0,
+            g_number_of_remaining_red_disks: 0,
+            g_frame_counter: 0,
+            g_terminal_max_frames_to_next_scroll: 0,
+            g_are_yellow_disks_detonated: 0,
+            g_should_leave_main_menu: 0,
+            g_should_exit_level: 0,
+            g_quit_level_countdown: 0,
+            g_additional_info_in_game_panel_frame_counter: 0,
+            g_current_level: Level::new(),
+        }
+    }
+}
+
 pub struct Game<'a> {
     sounds: Sounds<'a>,
     graphics: Graphics<'a>,
     video: Rc<RefCell<Video<'a>>>,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
-    g_current_level_state_with_padding:
-        [StatefulLevelTile; K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
-    g_frame_counter: u16,
     g_random_generator_seed: u16,
     g_level_list_data: [String; K_NUMBER_OF_LEVEL_WITH_PADDING],
     g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
@@ -57,6 +183,7 @@ pub struct Game<'a> {
     g_is_game_busy: bool,
     is_joystick_enabled: bool,
     demo_manager: DemoManager,
+    states: GameStates,
 }
 
 impl Game<'_> {
@@ -68,9 +195,6 @@ impl Game<'_> {
             video: video.clone(),
             graphics: Graphics::init(video.clone(), sdl_context.clone()),
             sdl_context: sdl_context,
-            g_current_level_state_with_padding: [StatefulLevelTile::default();
-                K_LEVEL_DATA_LENGTH + K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING],
-            g_frame_counter: 0,
             g_random_generator_seed: 0,
             g_level_list_data: [(); K_NUMBER_OF_LEVEL_WITH_PADDING]
                 .map(|_| String::from("                           ")),
@@ -80,6 +204,7 @@ impl Game<'_> {
             g_is_game_busy: false,
             is_joystick_enabled: false,
             demo_manager: DemoManager::new(),
+            states: GameStates::new(),
         }
     }
 
@@ -324,8 +449,8 @@ impl Game<'_> {
         //loc_4B22F:              ; CODE XREF: playDemo+30j
             gSelectedOriginalDemoLevelNumber = 0;
 
-            uint8_t demoLevelNumber = gDemos.demoData[demoFirstIndex];
-            uint8_t finalLevelNumber = demoIndex;
+             demoLevelNumber = gDemos.demoData[demoFirstIndex];
+             finalLevelNumber = demoIndex;
 
             if (demoLevelNumber <= kNumberOfLevels // 111
                 && demoLevelNumber != 0)
@@ -683,11 +808,11 @@ impl Game<'_> {
         for idx in 0..K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING {
             let value = K_LEVEL_STATE_PRECEDING_PADDING[idx];
             let value = crate::game::utils::convert_16le(value);
-            self.g_current_level_state_with_padding[idx].tile = (value & 0xff) as u8;
-            self.g_current_level_state_with_padding[idx].state = (value >> 8) as u8;
+            self.states.g_current_level_state_with_padding[idx].tile = (value & 0xff) as u8;
+            self.states.g_current_level_state_with_padding[idx].state = (value >> 8) as u8;
         }
 
-        self.g_frame_counter = 0xf000;
+        self.states.g_frame_counter = 0xf000;
     }
 
     /// Updates the random seed using the clock

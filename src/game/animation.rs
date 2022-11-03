@@ -1,3 +1,4 @@
+#[derive(Default, Clone, Copy)]
 pub struct MurphyAnimationDescriptor {
     // TODO: migrate offset to a (X, Y) coordinate system or to at least something that takes 320 pixel width screen
     // into account instead of the 122 positions of the original game

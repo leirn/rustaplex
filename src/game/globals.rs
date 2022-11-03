@@ -114,6 +114,12 @@ pub enum LevelTileType {
     LevelTileTypeCount,
 }
 
+pub enum PlayerLevelState {
+    PlayerLevelStateNotCompleted = 0,
+    PlayerLevelStateCompleted = 1,
+    PlayerLevelStateSkipped = 2,
+}
+
 pub struct PlayerEntry {
     pub name: String,
     pub hours: u8,
@@ -177,10 +183,10 @@ pub struct SpecialPortInfo {
     // game field in memory, which is 2 bytes per sprite.
     pub position: u16,
 
-    pub gravity: u8,       // 1 = turn on, anything else (0) = turn off
+    pub gravity: u8,        // 1 = turn on, anything else (0) = turn off
     pub freeze_zonks: u8,   // 2 = turn on, anything else (0) = turn off  (1=off!)
     pub freeze_enemies: u8, // 1 = turn on, anything else (0) = turn off
-    pub unused: u8,        // Doesn't matter: is ignored.
+    pub unused: u8,         // Doesn't matter: is ignored.
 }
 
 pub const K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS: usize = 10;

@@ -17,7 +17,6 @@
 
 use crate::game::globals::*;
 
-
 #[derive(Clone, Copy)]
 pub struct Level {
     pub tiles: [u8; K_LEVEL_SIZE], // [0-0x59F] of LevelTileType
@@ -27,7 +26,7 @@ pub struct Level {
     pub name: [char; K_LEVEL_NAME_LENGTH - 1],
     pub freeze_zonks: u8,            // 2 = on, anything else (including 1) = off
     pub number_of_infotrons: u8, // 0 means that Supaplex will count the total amount of Infotrons in the level, and use the low byte of that number. (A multiple of 256 Infotrons will then result in 0-to-eat, etc.!)
-    pub number_of_special_Ports: u8, // maximum 10
+    pub number_of_special_ports: u8, // maximum 10
     pub special_ports_info: [SpecialPortInfo; K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS],
 
     // This byte carries the information of the slowest speed used during the demo recording. 0x00=fastest, 0x0A=slowest
@@ -64,12 +63,12 @@ pub struct Level {
 } // size 1536 = 0x600
 
 impl Level {
-    pub fn new () -> Level {
+    pub fn new() -> Level {
         Level {
             freeze_zonks: 0,
             initial_gravitation: 0,
             number_of_infotrons: 0,
-            number_of_special_Ports: 0,
+            number_of_special_ports: 0,
             scrambled_checksum: 0,
             scrambled_speed: 0,
             speed_fix_magic_number: 0,
