@@ -110,6 +110,7 @@ struct GameStates {
     g_quit_level_countdown: u16, // word_51978 -> this is a counter to end the level after certain number of iterations (to let the game progress a bit before going back to the menu)
     g_additional_info_in_game_panel_frame_counter: u8, // byte_5197C -> how many more frames the additional info in the game panel will be
     g_current_level: Level,                            // 0x988B
+    g_is_playing_demo: bool,
 }
 
 impl GameStates {
@@ -167,6 +168,7 @@ impl GameStates {
             g_quit_level_countdown: 0,
             g_additional_info_in_game_panel_frame_counter: 0,
             g_current_level: Level::new(),
+            g_is_playing_demo: false,
         }
     }
 }
@@ -435,7 +437,10 @@ impl Game<'_> {
     fn play_demo(&mut self, demo_index: u16) {
         self.demo_manager.read_demo_files();
 
-        /* gRandomGeneratorSeed = gDemoRandomSeeds[demo_index];
+        self.g_random_generator_seed = self.demo_manager.g_demo_random_seeds[demo_index as usize];
+        self.states.g_should_leave_main_menu = true;
+        self.states.g_is_playing_demo = true;
+        /*
             gShouldLeaveMainMenu = 1;
             gIsPlayingDemo = 1;
 

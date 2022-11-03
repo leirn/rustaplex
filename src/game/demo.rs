@@ -34,7 +34,7 @@ pub struct DemoManager {
     k_original_demo_file_sizes: [u16; K_NUMBER_OF_DEMOS],
     k_original_demo_first_file_chunks: [FirstOriginalDemoFileChunk; K_NUMBER_OF_DEMOS],
 
-    g_demo_random_seeds: [u16; K_NUMBER_OF_DEMOS],
+    pub g_demo_random_seeds: [u16; K_NUMBER_OF_DEMOS],
 
     g_demos: Demos,
 
