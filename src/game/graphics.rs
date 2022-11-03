@@ -748,6 +748,83 @@ impl Graphics<'_> {
         }
     }
 
+    pub fn drawTextWithChars8FontToBuffer(
+        &mut self,
+        buffer: DrawTextBuffer,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        if text.len() == 0 {
+            return;
+        }
+
+        for idx in 0..text.len() {
+            let character = text.as_bytes()[idx];
+
+            if character == 0x0a {
+                // equivalent to '\n'
+                return;
+            }
+
+            // ' ' = 0x20 = 32, and is first ascii that can be represented.
+            // This line converts the ascii from the string to the index in the font
+            //
+            let bitmap_character_index = character - 0x20;
+
+            for y in 0..K_BITMAP_FONT_CHARACTER_HEIGHT {
+                for x in 0..K_BITMAP_FONT_CHARACTER_8_WIDTH {
+                    let bitmap_character_row = self.g_chars_8_bitmap_font[bitmap_character_index
+                        as usize
+                        + y * K_NUMBER_OF_CHARACTERS_IN_BITMAP_FONT];
+                    let pixel_value = (bitmap_character_row >> (7 - x)) & 0x1;
+
+                    // 6 is the wide (in pixels) of this font
+                    let dest_address = (dest_y + y) * K_SCREEN_WIDTH
+                        + (idx * K_BITMAP_FONT_CHARACTER_8_WIDTH + dest_x + x);
+                    match buffer {
+                        // TODO : Write to right buffer
+                        DrawTextBuffer::G_SCREEN_PIXEL => (),
+                        DrawTextBuffer::G_PANEL_RENDERED_BITMAP_DATA => (), //buffer[dest_address] = color * pixel_value;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn drawTextWithChars8Font(
+        &mut self,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        self.drawTextWithChars8FontToBuffer(
+            DrawTextBuffer::G_SCREEN_PIXEL,
+            dest_x,
+            dest_y,
+            color,
+            text,
+        );
+    }
+
+    pub fn drawTextWithChars8FontToGamePanel(
+        &mut self,
+        dest_x: usize,
+        dest_y: usize,
+        color: u8,
+        text: String,
+    ) {
+        self.drawTextWithChars8FontToBuffer(
+            DrawTextBuffer::G_PANEL_RENDERED_BITMAP_DATA,
+            dest_x,
+            dest_y,
+            color,
+            text,
+        );
+    }
+
     pub fn open_credits_block(&mut self) {
         const K_EDGE_WIDTH: u32 = 13;
         const K_EDGE_HEIGHT: u32 = 148;
@@ -884,6 +961,7 @@ const K_PANEL_BITMAP_HEIGHT: usize = 24;
 
 const K_BITMAP_FONT_CHARACTER_HEIGHT: usize = 7;
 const K_BITMAP_FONT_CHARACTER_6_WIDTH: usize = 6;
+const K_BITMAP_FONT_CHARACTER_8_WIDTH: usize = 8;
 
 pub type ColorPalette = [Color; K_NUMBER_OF_COLORS];
 type ColorPaletteData = [u8; K_PALETTE_DATA_SIZE];
@@ -915,3 +993,8 @@ pub const G_TITLE2_PALETTE_DATA: ColorPaletteData = [
     0x01, 0x03, 0x07, 0x00, 0x08, 0x08, 0x08, 0x08, 0x09, 0x00, 0x00, 0x04, 0x0B, 0x00, 0x00, 0x0C,
     0x00, 0x02, 0x0A, 0x01, 0x05, 0x05, 0x05, 0x08, 0x06, 0x06, 0x06, 0x08, 0x08, 0x08, 0x08, 0x07,
 ];
+
+enum DrawTextBuffer {
+    G_SCREEN_PIXEL,
+    G_PANEL_RENDERED_BITMAP_DATA,
+}
