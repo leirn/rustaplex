@@ -17,7 +17,6 @@
 
 use crate::game::globals::*;
 
-
 #[derive(Clone, Copy)]
 pub struct Level {
     pub tiles: [u8; K_LEVEL_SIZE], // [0-0x59F] of LevelTileType
@@ -64,25 +63,94 @@ pub struct Level {
 } // size 1536 = 0x600
 
 impl Level {
-    pub fn new () -> Level {
+    pub fn new() -> Level {
         Level {
-            freeze_zonks: 0,
-            initial_gravitation: 0,
-            number_of_infotrons: 0,
-            number_of_special_Ports: 0,
-            scrambled_checksum: 0,
-            scrambled_speed: 0,
-            speed_fix_magic_number: 0,
-            name: [' '; K_LEVEL_NAME_LENGTH - 1],
-            random_seed: 0,
-            special_ports_info: [SpecialPortInfo::default(); K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS],
             tiles: [(); K_LEVEL_SIZE].map(|_| 0),
             unused: [0; 4],
+            initial_gravitation: 0,
+            speed_fix_magic_number: 0,
+            name: [' '; K_LEVEL_NAME_LENGTH - 1],
+            freeze_zonks: 0,
+            number_of_infotrons: 0,
+            number_of_special_Ports: 0,
+            special_ports_info: [SpecialPortInfo::default(); K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS],
+            scrambled_checksum: 0,
+            scrambled_speed: 0,
+            random_seed: 0,
         }
     }
 
     pub fn from_raw(raw_data: [u8; K_LEVEL_DATA_LENGTH]) -> Level {
-        // TODO : make a real implementation
-        Level::new()
+        // TODO : fix type and data size issue
+        let mut level = Level::new();
+        let mut offset = 0;
+
+        const OFFSET_TILES: usize = 0;
+        const OFFSET_UNUSED: usize = OFFSET_TILES + K_LEVEL_SIZE;
+        const OFFSET_INITIAL_GRAVITATION: usize = OFFSET_UNUSED + 4;
+        const OFFSET_SPEED_FIX_MAGIC_NUMBER: usize = OFFSET_INITIAL_GRAVITATION + 1;
+        const OFFSET_LEVEL_NAME: usize = OFFSET_SPEED_FIX_MAGIC_NUMBER + 1;
+        const OFFSET_FREEZE_ZONKS: usize = OFFSET_LEVEL_NAME + K_LEVEL_NAME_LENGTH - 1;
+        const OFFSET_NUMBER_OF_INFOTRONS: usize = OFFSET_FREEZE_ZONKS + 1;
+        const OFFSET_NUMBER_OF_SP: usize = OFFSET_NUMBER_OF_INFOTRONS + 1;
+        const OFFSET_SP_0: usize = OFFSET_NUMBER_OF_SP + 1;
+        const OFFSET_SP_1: usize = OFFSET_SP_0 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_2: usize = OFFSET_SP_1 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_3: usize = OFFSET_SP_2 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_4: usize = OFFSET_SP_3 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_5: usize = OFFSET_SP_4 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_6: usize = OFFSET_SP_5 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_7: usize = OFFSET_SP_6 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_8: usize = OFFSET_SP_7 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SP_9: usize = OFFSET_SP_8 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SCRAMBLED_CHECKSUM: usize = OFFSET_SP_9 + K_SPECIAL_PORT_STRUCT_SIZE;
+        const OFFSET_SCRAMBLED_SPEED: usize = OFFSET_SCRAMBLED_CHECKSUM + 1;
+        const OFFSET_RANDOM_SEED: usize = OFFSET_SCRAMBLED_SPEED;
+
+        level.freeze_zonks = raw_data[OFFSET_FREEZE_ZONKS];
+        level.initial_gravitation = raw_data[OFFSET_INITIAL_GRAVITATION];
+        level.number_of_infotrons = raw_data[OFFSET_NUMBER_OF_INFOTRONS];
+        level.number_of_special_Ports = raw_data[OFFSET_NUMBER_OF_SP];
+        level.scrambled_checksum = raw_data[OFFSET_SCRAMBLED_CHECKSUM];
+        level.scrambled_speed = raw_data[OFFSET_SCRAMBLED_SPEED];
+        level.speed_fix_magic_number = raw_data[OFFSET_SPEED_FIX_MAGIC_NUMBER];
+        //level.name = raw_data[OFFSET_LEVEL_NAME..(OFFSET_LEVEL_NAME + K_LEVEL_NAME_LENGTH + 1)]; //TODO fix type issue
+        level.random_seed =
+            (raw_data[OFFSET_RANDOM_SEED] as u16) << 8 + raw_data[OFFSET_RANDOM_SEED + 1] as u16; // LE or BE ?
+        level.special_ports_info[0] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_0..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_0)],
+        );
+        level.special_ports_info[1] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_1..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_1)],
+        );
+        level.special_ports_info[2] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_2..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_2)],
+        );
+        level.special_ports_info[3] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_3..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_3)],
+        );
+        level.special_ports_info[4] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_4..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_4)],
+        );
+        level.special_ports_info[5] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_5..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_5)],
+        );
+        level.special_ports_info[6] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_6..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_6)],
+        );
+        level.special_ports_info[7] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_7..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_7)],
+        );
+        level.special_ports_info[8] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_8..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_8)],
+        );
+        level.special_ports_info[9] = SpecialPortInfo::from_raw(
+            raw_data[OFFSET_SP_9..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_9)],
+        );
+
+        level.tiles = raw_data[offset..(K_LEVEL_SIZE + offset)];
+        level.unused = raw_data[OFFSET_UNUSED..(4 + OFFSET_UNUSED)];
+
+        level
     }
 }

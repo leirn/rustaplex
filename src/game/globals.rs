@@ -177,10 +177,24 @@ pub struct SpecialPortInfo {
     // game field in memory, which is 2 bytes per sprite.
     pub position: u16,
 
-    pub gravity: u8,       // 1 = turn on, anything else (0) = turn off
+    pub gravity: u8,        // 1 = turn on, anything else (0) = turn off
     pub freeze_zonks: u8,   // 2 = turn on, anything else (0) = turn off  (1=off!)
     pub freeze_enemies: u8, // 1 = turn on, anything else (0) = turn off
-    pub unused: u8,        // Doesn't matter: is ignored.
+    pub unused: u8,         // Doesn't matter: is ignored.
 }
+
+impl SpecialPortInfo {
+    pub fn from_raw(raw_data: [u8; K_SPECIAL_PORT_STRUCT_SIZE]) -> SpecialPortInfo {
+        SpecialPortInfo {
+            position: ((raw_data[0] as u16) << 8) + raw_data[1] as u16,// LE or BE ?
+            gravity: raw_data[2],
+            freeze_zonks: raw_data[3],
+            freeze_enemies: raw_data[4],
+            unused: raw_data[5],
+        }
+    }
+}
+
+pub const K_SPECIAL_PORT_STRUCT_SIZE: usize = 6;
 
 pub const K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS: usize = 10;
