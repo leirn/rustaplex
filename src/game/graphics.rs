@@ -15,9 +15,10 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+use crate::game::button_borders::{ButtonBorderLineDescriptor, ButtonBorderLineType};
 use crate::game::globals::*;
 use crate::game::video::Video;
-use sdl2::pixels::Color;
+use sdl2::pixels::{Color, Palette};
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Read;
@@ -25,7 +26,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 pub struct Graphics<'a> {
-    video: Rc<RefCell<Video<'a>>>,
+    pub video: Rc<RefCell<Video<'a>>>,
     g_menu_bitmap_data: Box<[u8; K_FULL_SCREEN_BITMAP_LENGTH]>,
     g_back_bitmap_data: Box<[u8; K_FULL_SCREEN_BITMAP_LENGTH]>,
     g_controls_bitmap_data: Box<[u8; K_FULL_SCREEN_BITMAP_LENGTH]>,
@@ -78,7 +79,7 @@ impl Graphics<'_> {
             g_palettes: Box::new([G_BLACK_PALETTE; K_NUMBER_OF_PALETTES]),
             g_current_palette: G_BLACK_PALETTE,
             g_should_show_fps: false,
-            g_should_limit_fps: false,
+            g_should_limit_fps: true,
             s_number_of_frames: 0,
             g_frame_rate_reference_time: 0,
             g_frame_rate: 0.0,
@@ -919,7 +920,128 @@ impl Graphics<'_> {
         let title2_palette = Graphics::convert_palette_data_to_palette(G_TITLE2_PALETTE_DATA);
         self.fade_to_palette(title2_palette);
     }
+
+    pub fn draw_menu_background(&mut self) {
+        for y in 0..K_SCREEN_HEIGHT {
+            for x in 0..K_SCREEN_WIDTH {
+                let dest_pixel_address = y * K_SCREEN_WIDTH + x;
+
+                let source_pixel_address = y * K_SCREEN_WIDTH / 2 + x / 8;
+                let source_pixel_bit_position = 7 - (x % 8);
+
+                let b = (self.g_menu_bitmap_data[source_pixel_address + 0]
+                    >> source_pixel_bit_position)
+                    & 0x1;
+                let g = (self.g_menu_bitmap_data[source_pixel_address + 40]
+                    >> source_pixel_bit_position)
+                    & 0x1;
+                let r = (self.g_menu_bitmap_data[source_pixel_address + 80]
+                    >> source_pixel_bit_position)
+                    & 0x1;
+                let i = (self.g_menu_bitmap_data[source_pixel_address + 120]
+                    >> source_pixel_bit_position)
+                    & 0x1;
+
+                let final_color = (b << 0) | (g << 1) | (r << 2) | (i << 3);
+
+                self.video
+                    .borrow_mut()
+                    .set_pixel(dest_pixel_address, final_color);
+            }
+        }
+    }
+
+    pub fn get_palette(&mut self, palette: PaletteType) -> ColorPalette {
+        match palette {
+            PaletteType::InformationScreenPalette => self.g_palettes[0],
+            PaletteType::GamePalette => self.g_palettes[1],
+            PaletteType::ControlsPalette => self.g_palettes[2],
+            PaletteType::GameDimmedPalette => self.g_palettes[3],
+        }
+    }
+
+    pub fn draw_back_background(&mut self) {
+        self.draw_full_screen_bitmap(BitmapType::Background, DestinationSurface::Screen);
+    }
+
+    fn draw_full_screen_bitmap(&mut self, bitmap: BitmapType, dest: DestinationSurface) {
+        let bitmap_data = match bitmap {
+            BitmapType::Background => &self.g_back_bitmap_data,
+            BitmapType::Control => &self.g_controls_bitmap_data,
+            BitmapType::Gfx => &self.g_gfx_bitmap_data,
+            BitmapType::Menu => &self.g_menu_bitmap_data,
+        };
+
+        for y in 0..K_SCREEN_HEIGHT {
+            for x in 0..K_SCREEN_WIDTH {
+                let dest_pixel_address = y * K_SCREEN_WIDTH + x;
+
+                let source_pixel_address = y * K_SCREEN_WIDTH / 2 + x / 8;
+                let source_pixel_bit_position = 7 - (x % 8);
+
+                let b = (bitmap_data[source_pixel_address + 0] >> source_pixel_bit_position) & 0x1;
+                let g = (bitmap_data[source_pixel_address + 40] >> source_pixel_bit_position) & 0x1;
+                let r = (bitmap_data[source_pixel_address + 80] >> source_pixel_bit_position) & 0x1;
+                let i =
+                    (bitmap_data[source_pixel_address + 120] >> source_pixel_bit_position) & 0x1;
+
+                let final_color = (b << 0) | (g << 1) | (r << 2) | (i << 3);
+
+                match dest {
+                    DestinationSurface::Screen => self
+                        .video
+                        .borrow_mut()
+                        .set_pixel(dest_pixel_address, final_color),
+                }
+            }
+        }
+    }
+
+    pub fn draw_main_menu_button_border(
+        &mut self,
+        border: &[ButtonBorderLineDescriptor],
+        color: u8,
+    ) {
+        for i in 0..border.len() {
+            let line = &border[i];
+
+            for j in 0..line.length {
+                let mut dest_address = 0;
+                if line.button_type == ButtonBorderLineType::ButtonBorderLineTypeHorizontal {
+                    dest_address = line.y * K_SCREEN_WIDTH as u16 + line.x + j;
+                } else if line.button_type == ButtonBorderLineType::ButtonBorderLineTypeVertical {
+                    dest_address = (line.y - j) * K_SCREEN_WIDTH as u16 + line.x;
+                } else if line.button_type
+                    == ButtonBorderLineType::ButtonBorderLineTypeBottomLeftToTopRightDiagonal
+                {
+                    dest_address = (line.y - j) * K_SCREEN_WIDTH as u16 + line.x + j;
+                } else if line.button_type
+                    == ButtonBorderLineType::ButtonBorderLineTypeTopLeftToBottomRightDiagonal
+                {
+                    dest_address = (line.y + j) * K_SCREEN_WIDTH as u16 + line.x + j;
+                }
+                self.video
+                    .borrow_mut()
+                    .set_pixel(dest_address as usize, color);
+            }
+        }
+
+        //saveLastMouseAreaBitmap();
+        //drawMouseCursor();
+    }
 }
+
+enum DestinationSurface {
+    Screen,
+}
+
+enum BitmapType {
+    Background,
+    Menu,
+    Control,
+    Gfx,
+}
+
 /*
 #[derive(Copy, Clone, Default)]
 #[repr(C)]
@@ -942,7 +1064,7 @@ impl Color {
 
 pub const K_SCREEN_WIDTH: usize = 320;
 pub const K_SCREEN_HEIGHT: usize = 200;
-const K_FULL_SCREEN_FRAMEBUFFER_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT;
+pub const K_FULL_SCREEN_FRAMEBUFFER_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT;
 const K_FULL_SCREEN_BITMAP_LENGTH: usize = K_SCREEN_WIDTH * K_SCREEN_HEIGHT / 2; // They use 4 bits to encode pixels
 
 const K_NUMBER_OF_CHARACTERS_IN_BITMAP_FONT: usize = 64;
@@ -997,4 +1119,11 @@ pub const G_TITLE2_PALETTE_DATA: ColorPaletteData = [
 pub enum DrawTextBuffer {
     G_SCREEN_PIXEL,
     G_PANEL_RENDERED_BITMAP_DATA,
+}
+
+pub enum PaletteType {
+    GamePalette,
+    ControlsPalette,
+    GameDimmedPalette,
+    InformationScreenPalette,
 }

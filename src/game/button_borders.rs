@@ -1,22 +1,36 @@
-enum ButtonBorderLineType {
+#[derive(Default)]
+pub struct ButtonStatus {
+    pub gPlayerListButtonPressed: bool,
+    pub gPlayerListUpButtonPressed: bool,
+    pub gPlayerListDownButtonPressed: bool,
+    pub gRankingListButtonPressed: bool,
+    pub gRankingListUpButtonPressed: bool,
+    pub gRankingListDownButtonPressed: bool,
+    pub gLevelListButtonPressed: bool,
+    pub gLevelListUpButtonPressed: bool,
+    pub gLevelListDownButtonPressed: bool,
+}
+#[derive(PartialEq)]
+pub enum ButtonBorderLineType {
     ButtonBorderLineTypeHorizontal, // from left to right
     ButtonBorderLineTypeVertical,   // from bottom to top
     ButtonBorderLineTypeBottomLeftToTopRightDiagonal,
     ButtonBorderLineTypeTopLeftToBottomRightDiagonal,
 }
 
-struct ButtonBorderLineDescriptor {
-    button_type: ButtonBorderLineType,
-    x: u16,
-    y: u16,
-    length: u16,
+pub struct ButtonBorderLineDescriptor {
+    pub button_type: ButtonBorderLineType,
+    pub x: u16,
+    pub y: u16,
+    pub length: u16,
 }
 
 const K_NUMBER_OF_OPTIONS_MENU_BORDERS: usize = 20;
 
 const K_NUMBER_OF_MAIN_MENU_BORDERS: usize = 12;
 
-const K_OPTIONS_MENU_BORDERS: [&[ButtonBorderLineDescriptor]; K_NUMBER_OF_OPTIONS_MENU_BORDERS] = [
+pub const K_OPTIONS_MENU_BORDERS: [&[ButtonBorderLineDescriptor];
+    K_NUMBER_OF_OPTIONS_MENU_BORDERS] = [
     &[
         ButtonBorderLineDescriptor {
             button_type: ButtonBorderLineType::ButtonBorderLineTypeVertical,
@@ -767,7 +781,8 @@ const K_OPTIONS_MENU_BORDERS: [&[ButtonBorderLineDescriptor]; K_NUMBER_OF_OPTION
     ],
 ];
 
-const K_MAIN_MENU_BUTTON_BORDERS: [&[ButtonBorderLineDescriptor]; K_NUMBER_OF_MAIN_MENU_BORDERS] = [
+pub const K_MAIN_MENU_BUTTON_BORDERS: [&[ButtonBorderLineDescriptor];
+    K_NUMBER_OF_MAIN_MENU_BORDERS] = [
     // starts on 0x504? or before?
     // Player List - Up Arrow - Left and Top borders
     &[
@@ -949,4 +964,138 @@ const K_MAIN_MENU_BUTTON_BORDERS: [&[ButtonBorderLineDescriptor]; K_NUMBER_OF_MA
             length: 12,
         },
     ],
+];
+
+use crate::Game;
+
+pub struct ButtonDescriptor {
+    pub start_x: i32,
+    pub start_y: i32,
+    pub end_x: i32,
+    pub end_y: i32,
+    pub callback: fn(&mut Game<'_>),
+}
+
+pub const K_NUMBER_OF_MAIN_MENU_BUTTONS: usize = 17;
+
+pub const K_MAIN_MENU_BUTTON_DESCRIPTORS: [ButtonDescriptor; K_NUMBER_OF_MAIN_MENU_BUTTONS] = [
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 6,
+        end_x: 157,
+        end_y: 14,
+        callback: |game| game.handleNewPlayerOptionClick(), // New player
+    },
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 15,
+        end_x: 157,
+        end_y: 23,
+        callback: |game| game.handleDeletePlayerOptionClick(), // Delete player
+    },
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 24,
+        end_x: 157,
+        end_y: 32,
+        callback: |game| game.handleSkipLevelOptionClick(), // Skip level
+    },
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 33,
+        end_x: 157,
+        end_y: 41,
+        callback: |game| game.handleStatisticsOptionClick(), // Statistics
+    },
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 42,
+        end_x: 157,
+        end_y: 50,
+        callback: |game| game.handleGfxTutorOptionClick(), // GFX-tutor
+    },
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 51,
+        end_x: 157,
+        end_y: 59,
+        callback: |game| game.handleDemoOptionClick(), // Demo
+    },
+    ButtonDescriptor {
+        start_x: 5,
+        start_y: 60,
+        end_x: 157,
+        end_y: 69,
+        callback: |game| game.handleControlsOptionClick(), // Controls
+    },
+    ButtonDescriptor {
+        start_x: 140,
+        start_y: 90,
+        end_x: 155,
+        end_y: 108,
+        callback: |game| game.handleRankingListScrollUp(), // Rankings arrow up
+    },
+    ButtonDescriptor {
+        start_x: 140,
+        start_y: 121,
+        end_x: 155,
+        end_y: 138,
+        callback: |game| game.handleRankingListScrollDown(), // Rankings arrow down
+    },
+    ButtonDescriptor {
+        start_x: 96,
+        start_y: 140,
+        end_x: 115,
+        end_y: 163,
+        callback: |game| game.handleOkButtonClick(), // Ok button
+    },
+    ButtonDescriptor {
+        start_x: 83,
+        start_y: 168,
+        end_x: 126,
+        end_y: 192,
+        callback: |game| game.handleFloppyDiskButtonClick(), // Insert data disk according to https://supaplex.fandom.com/wiki/Main_menu
+    },
+    ButtonDescriptor {
+        start_x: 11,
+        start_y: 142,
+        end_x: 67,
+        end_y: 153,
+        callback: |game| game.handlePlayerListScrollUp(), // Players arrow up
+    },
+    ButtonDescriptor {
+        start_x: 11,
+        start_y: 181,
+        end_x: 67,
+        end_y: 192,
+        callback: |game| game.handlePlayerListScrollDown(), // Players arrow down
+    },
+    ButtonDescriptor {
+        start_x: 11,
+        start_y: 154,
+        end_x: 67,
+        end_y: 180,
+        callback: |game| game.handlePlayerListClick(), // Players list area
+    },
+    ButtonDescriptor {
+        start_x: 142,
+        start_y: 142,
+        end_x: 306,
+        end_y: 153,
+        callback: |game| game.handleLevelListScrollUp(), // Levels arrow up
+    },
+    ButtonDescriptor {
+        start_x: 142,
+        start_y: 181,
+        end_x: 306,
+        end_y: 192,
+        callback: |game| game.handleLevelListScrollDown(), // Levels arrow down
+    },
+    ButtonDescriptor {
+        start_x: 297,
+        start_y: 37,
+        end_x: 312,
+        end_y: 52,
+        callback: |game| game.handleLevelCreditsClick(), // Credits
+    },
 ];

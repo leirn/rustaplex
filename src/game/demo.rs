@@ -23,28 +23,34 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
+use crate::game::UserInput;
+
 pub struct DemoManager {
     pub g_levels_dat_filename: String,
     pub g_sp_demo_filename: String,
     pub g_is_sp_demo_available_to_run: u8,
     pub file_is_demo: bool,
     pub g_is_playing_demo: bool,
+    pub g_demo_current_input: UserInput,
     pub g_demo_current_input_index: u16,
+    pub g_demo_current_input_repeater_count: u16,
 
     k_original_demo_file_sizes: [u16; K_NUMBER_OF_DEMOS],
     k_original_demo_first_file_chunks: [FirstOriginalDemoFileChunk; K_NUMBER_OF_DEMOS],
 
     pub g_demo_random_seeds: [u16; K_NUMBER_OF_DEMOS],
 
-    g_demos: Demos,
+    pub g_demos: Demos,
 
     g_current_demo_level_name: String,
 
     recording_demo_message: String,
 
-    g_selected_original_demo_level_number: usize,
-    demo_file_name: String,
+    pub g_selected_original_demo_level_number: usize,
+    pub demo_file_name: String,
     g_demo0_bin_filename: String,
+
+    pub g_demo_index_or_demo_level_number: u16,
 }
 impl DemoManager {
     pub fn new() -> DemoManager {
@@ -54,7 +60,9 @@ impl DemoManager {
             g_is_sp_demo_available_to_run: 0,
             file_is_demo: false,
             g_is_playing_demo: false,
+            g_demo_current_input: UserInput::UserInputNone,
             g_demo_current_input_index: 0,
+            g_demo_current_input_repeater_count: 0,
             g_current_demo_level_name: String::from(".SP\0----- DEMO LEVEL! -----"),
             g_demo_random_seeds: [0; K_NUMBER_OF_DEMOS],
             g_demos: Demos::new(),
@@ -107,6 +115,7 @@ impl DemoManager {
             g_selected_original_demo_level_number: 0,
             demo_file_name: String::new(),
             g_demo0_bin_filename: String::from("DEMO0.BIN"),
+            g_demo_index_or_demo_level_number: 0,
         }
     }
 
@@ -197,7 +206,7 @@ impl DemoManager {
                 self.g_demos.demo_data[(self.g_demo_current_input_index as usize)..]
                     .copy_from_slice(data_buffer.as_slice());
 
-                if (number_of_demo_bytes_read == 0) {
+                if number_of_demo_bytes_read == 0 {
                     return i as u8;
                 }
             }
@@ -269,7 +278,7 @@ struct DemoFile {
 }
 
 #[derive(Clone, Copy)]
-struct Demos {
+pub struct Demos {
     pub demo_first_indices: [u16; K_NUMBER_OF_DEMOS + 1], // index of the last byte of all demos (starting at demo-segment:0000). there are 11 words because the end of this "list" is marked with 0xFFFF
     pub demo_data: [u8; 1 + K_MAX_DEMO_INPUT_STEPS + 1], // to fit at least one huge demo with 1 byte for level number, then all the possible steps, then 0xFF
     pub level: [Level; K_NUMBER_OF_DEMOS],

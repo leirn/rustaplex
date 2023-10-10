@@ -21,7 +21,7 @@ pub const GAME_NAME: &str = "RUSTAPLEX";
 pub const WINDOW_TITLE: &str = "Rustaplex";
 
 pub const K_SIZE_OF_LEVEL_STATE_PRECEDING_PADDING: usize = 344;
-pub const K_LEVEL_DATA_LENGTH: usize = 1525;
+pub const K_LEVEL_DATA_LENGTH: usize = 1536;
 
 pub const K_LEVEL_WIDTH: usize = 60;
 pub const K_LEVEL_HEIGHT: usize = 24;
@@ -114,18 +114,37 @@ pub enum LevelTileType {
     LevelTileTypeCount,
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum PlayerLevelState {
     PlayerLevelStateNotCompleted = 0,
     PlayerLevelStateCompleted = 1,
     PlayerLevelStateSkipped = 2,
 }
 
+impl TryFrom<u8> for PlayerLevelState {
+    type Error = &'static str;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(PlayerLevelState::PlayerLevelStateNotCompleted),
+            1 => Ok(PlayerLevelState::PlayerLevelStateCompleted),
+            2 => Ok(PlayerLevelState::PlayerLevelStateSkipped),
+            _ => Err("PlayerLevelState : Unknown value"),
+        }
+    }
+}
+
+pub const K_NOT_COMPLETED_LEVEL_ENTRY_COLOR: u8 = 2;
+pub const K_COMPLETED_LEVEL_ENTRY_COLOR: u8 = 4;
+pub const K_BLOCKED_LEVEL_ENTRY_COLOR: u8 = 6;
+pub const K_SKIPPED_LEVEL_ENTRY_COLOR: u8 = 8;
+
 pub struct PlayerEntry {
     pub name: String,
     pub hours: u8,
     pub minutes: u8,
     pub seconds: u8,
-    pub level_state: [u8; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+    pub level_state: [PlayerLevelState; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
     pub unknown1: u8,
     pub unknown2: u8,
     pub unknown3: u8,
@@ -140,7 +159,7 @@ impl PlayerEntry {
             hours: 0,
             minutes: 0,
             seconds: 0,
-            level_state: [0; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+            level_state: [PlayerLevelState::PlayerLevelStateNotCompleted; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
             unknown1: 0,
             unknown2: 0,
             unknown3: 0,
@@ -148,10 +167,44 @@ impl PlayerEntry {
             completed_all_levels: 0, // Still not 100% sure
         }
     }
+
+    pub fn from(player_data: [u8; K_PLAYER_ENTRY_SIZE]) -> PlayerEntry {
+        let mut pe = PlayerEntry {
+            name: format!(
+                "{}{}{}{}{}{}{}{}",
+                player_data[0],
+                player_data[1],
+                player_data[2],
+                player_data[3],
+                player_data[4],
+                player_data[5],
+                player_data[6],
+                player_data[7]
+            ), // Default player name
+            hours: player_data[K_PLAYER_NAME_LENGTH + 1],
+            minutes: player_data[K_PLAYER_NAME_LENGTH + 2],
+            seconds: player_data[K_PLAYER_NAME_LENGTH + 3],
+            level_state: [PlayerLevelState::PlayerLevelStateNotCompleted; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+            unknown1: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 4],
+            unknown2: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 5],
+            unknown3: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 6],
+            next_level_to_play: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 7],
+            completed_all_levels: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 8], // Still not 100% sure
+        };
+
+        for j in 0..K_NUMBER_OF_LEVEL {
+            pe.level_state[j] = player_data[K_PLAYER_NAME_LENGTH + 4 + j]
+                .try_into()
+                .unwrap();
+        }
+
+        pe
+    }
 }
 
+#[derive(Clone)]
 pub struct HallOfFameEntry {
-    pub name: String,
+    pub player_name: String,
     pub hours: u8,
     pub minutes: u8,
     pub seconds: u8,
@@ -160,10 +213,29 @@ pub struct HallOfFameEntry {
 impl HallOfFameEntry {
     pub fn new() -> HallOfFameEntry {
         HallOfFameEntry {
-            name: String::from("--------"), // Default player name
+            player_name: String::from("--------"), // Default player name
             hours: 0,
             minutes: 0,
             seconds: 0,
+        }
+    }
+
+    pub fn from(player_data: [u8; K_HALL_OF_FAME_ENTRY_SIZE]) -> HallOfFameEntry {
+        HallOfFameEntry {
+            player_name: format!(
+                "{}{}{}{}{}{}{}{}",
+                player_data[0],
+                player_data[1],
+                player_data[2],
+                player_data[3],
+                player_data[4],
+                player_data[5],
+                player_data[6],
+                player_data[7]
+            ),
+            hours: player_data[K_PLAYER_NAME_LENGTH + 1],
+            minutes: player_data[K_PLAYER_NAME_LENGTH + 2],
+            seconds: player_data[K_PLAYER_NAME_LENGTH + 3],
         }
     }
 }
@@ -195,7 +267,7 @@ impl SpecialPortInfo {
             panic!("Wrong input size !!!");
         }
         SpecialPortInfo {
-            position: ((raw_data[0] as u16) << 8) + raw_data[1] as u16,// LE or BE ?
+            position: ((raw_data[0] as u16) << 8) + raw_data[1] as u16, // LE or BE ?
             gravity: raw_data[2],
             freeze_zonks: raw_data[3],
             freeze_enemies: raw_data[4],

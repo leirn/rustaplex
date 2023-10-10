@@ -51,11 +51,19 @@ pub struct GameStates {
     pub g_frame_counter: u16,                          // word_5195D -> 0x1268
     pub g_terminal_max_frames_to_next_scroll: u8, // byte_5196A -> this is used to make the terminals scroll their screens faster after the yellow disks have been detonated
     pub g_are_yellow_disks_detonated: u8,         // byte_5196B
-    pub g_should_leave_main_menu: u16,            // word_5196C
+    pub g_should_leave_main_menu: bool,           // word_5196C
     pub g_should_exit_level: u16,                 // word_51974
     pub g_quit_level_countdown: u16, // word_51978 -> this is a counter to end the level after certain number of iterations (to let the game progress a bit before going back to the menu)
     pub g_additional_info_in_game_panel_frame_counter: u8, // byte_5197C -> how many more frames the additional info in the game panel will be
     pub g_current_level: Level,                            // 0x988B
+    pub g_is_playing_demo: bool,
+    pub g_current_player_index: usize,
+    pub g_current_player_padded_level_data: [u8; K_NUMBER_OF_LEVEL_WITH_PADDING],
+    pub g_current_selected_level_index: u8,
+    pub g_player_name: String,
+    pub g_current_level_name: String,
+    pub g_is_level_started_as_demo: bool,
+    pub g_has_user_cheated: bool,
 }
 
 impl GameStates {
@@ -108,11 +116,28 @@ impl GameStates {
             g_frame_counter: 0,
             g_terminal_max_frames_to_next_scroll: 0,
             g_are_yellow_disks_detonated: 0,
-            g_should_leave_main_menu: 0,
+            g_should_leave_main_menu: false,
             g_should_exit_level: 0,
             g_quit_level_countdown: 0,
             g_additional_info_in_game_panel_frame_counter: 0,
             g_current_level: Level::new(),
+            g_is_playing_demo: false,
+            g_current_player_index: 0,
+
+            g_current_player_padded_level_data: [0; K_NUMBER_OF_LEVEL_WITH_PADDING],
+            g_current_selected_level_index: 0,
+            g_player_name: String::new(),
+            g_current_level_name: String::new(),
+            g_is_level_started_as_demo: false,
+            g_has_user_cheated: false,
         }
+    }
+
+    pub fn get_g_current_player_level_data(&self, index: usize) -> u8 {
+        self.g_current_player_padded_level_data[index + K_FIRST_LEVEL_INDEX]
+    }
+
+    pub fn set_g_current_player_level_data(&mut self, index: usize, value: u8) {
+        self.g_current_player_padded_level_data[index + K_FIRST_LEVEL_INDEX] = value;
     }
 }

@@ -14,11 +14,10 @@
 * You should have received a copy of the GNU General Public License
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-
-use super::graphics::G_BLACK_PALETTE;
-use super::graphics::{self, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use super::graphics::{G_BLACK_PALETTE, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
 use crate::game::globals;
 use crate::game::graphics::ColorPalette;
+use crate::game::K_FULL_SCREEN_FRAMEBUFFER_LENGTH;
 use sdl2::pixels::{Palette, PixelFormatEnum};
 use sdl2::surface::Surface;
 use sdl2::video::{DisplayMode, FullscreenType};
@@ -56,8 +55,8 @@ impl Video<'_> {
         let mut _window = _video_subsystem
             .window(
                 globals::WINDOW_TITLE,
-                graphics::K_SCREEN_WIDTH as u32,
-                graphics::K_SCREEN_HEIGHT as u32,
+                K_SCREEN_WIDTH as u32,
+                K_SCREEN_HEIGHT as u32,
             )
             .opengl() // this line DOES NOT enable opengl, but allows you to create/get an OpenGL context from your window.
             .resizable()
@@ -253,5 +252,15 @@ impl Video<'_> {
 
     pub fn present(&mut self) {
         self.g_renderer.present();
+    }
+
+    pub fn get_screen_pixels(&mut self) -> [u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH] {
+        let l = self.g_screen_surface.without_lock().unwrap();
+
+        let mut value = [0_u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH];
+        for i in 0..K_FULL_SCREEN_FRAMEBUFFER_LENGTH {
+            value[i] = l[i];
+        }
+        value
     }
 }
