@@ -910,8 +910,6 @@ impl Game<'_> {
         let current_level_data = self.states.g_current_player_padded_level_data
             [K_FIRST_LEVEL_INDEX + self.states.g_current_selected_level_index as usize];
 
-        println!("{:?}", self.g_level_list_data);
-
         let previous_level_name = match self.states.g_current_selected_level_index {
             0 | 1 => String::new(),
             _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 2)
@@ -979,7 +977,7 @@ impl Game<'_> {
             (self.g_automatic_demo_playback_countdown, _) =
                 self.g_automatic_demo_playback_countdown.overflowing_sub(1);
             if self.g_automatic_demo_playback_countdown == 0 {
-                self.handleDemoOptionClick();
+                self.handle_demo_option_click();
             }
 
             if self.states.g_should_leave_main_menu != false {
@@ -990,18 +988,16 @@ impl Game<'_> {
             self.graphics.video_loop();
             (self.states.g_frame_counter, _) = self.states.g_frame_counter.overflowing_add(1);
 
-            let mouse_x = self.events.mouse_state().x();
-            let mouse_y = self.events.mouse_state().y();
-            let mouse_button_status = self
-                .events
-                .mouse_state()
-                .is_mouse_button_pressed(MouseButton::Left)
-                as u8
-                | ((self
-                    .events
-                    .mouse_state()
-                    .is_mouse_button_pressed(MouseButton::Right) as u8)
-                    << 1);
+            let mouse_state = self.events.mouse_state();
+
+            let mouse_x = mouse_state.x();
+            let mouse_y = mouse_state.y();
+            let mouse_button_status = mouse_state.left() as u8 | ((mouse_state.right() as u8) << 1);
+
+            println!(
+                "Mouse status : {}, {}, {}",
+                mouse_button_status, mouse_x, mouse_y
+            );
 
             self.mouse.g_mouse_button_status = mouse_button_status;
             if self.mouse.g_mouse_x != mouse_x || self.mouse.g_mouse_y != mouse_y {
@@ -1015,61 +1011,63 @@ impl Game<'_> {
             //drawMouseCursor();
             self.draw_main_menum_button_borders();
             self.update_user_input();
-            if self.button_states.gPlayerListDownButtonPressed != false
-                || self.button_states.gPlayerListUpButtonPressed != false
+            if self.button_states.g_player_list_down_button_pressed != false
+                || self.button_states.g_player_list_up_button_pressed != false
             {
-                self.button_states.gPlayerListButtonPressed = true;
+                self.button_states.g_player_list_button_pressed = true;
             }
 
-            self.button_states.gPlayerListDownButtonPressed = false;
-            self.button_states.gPlayerListUpButtonPressed = false;
-            if self.button_states.gRankingListDownButtonPressed != false
-                || self.button_states.gRankingListUpButtonPressed != false
+            self.button_states.g_player_list_down_button_pressed = false;
+            self.button_states.g_player_list_up_button_pressed = false;
+            if self.button_states.g_ranking_list_down_button_pressed != false
+                || self.button_states.g_ranking_list_up_button_pressed != false
             {
-                self.button_states.gRankingListButtonPressed = true;
+                self.button_states.g_ranking_list_button_pressed = true;
             }
 
-            self.button_states.gRankingListDownButtonPressed = false;
-            self.button_states.gRankingListUpButtonPressed = false;
-            if self.button_states.gLevelListDownButtonPressed != false
-                || self.button_states.gLevelListUpButtonPressed != false
+            self.button_states.g_ranking_list_down_button_pressed = false;
+            self.button_states.g_ranking_list_up_button_pressed = false;
+            if self.button_states.g_level_list_down_button_pressed != false
+                || self.button_states.g_level_list_up_button_pressed != false
             {
-                self.button_states.gLevelListButtonPressed = true;
+                self.button_states.g_level_list_button_pressed = true;
             }
 
-            self.button_states.gLevelListDownButtonPressed = false;
-            self.button_states.gLevelListUpButtonPressed = false;
-            if self.keyboard.gCurrentUserInput as u8 > K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET as u8
+            self.button_states.g_level_list_down_button_pressed = false;
+            self.button_states.g_level_list_up_button_pressed = false;
+            if self.keyboard.g_current_user_input as u8
+                > K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET as u8
             // || isStartButtonPressed() TODO : handle game controller
             {
-                self.handleOkButtonClick();
-            } else if self.keyboard.gIsF1KeyPressed {
+                self.handle_ok_button_click();
+            } else if self.keyboard.g_is_f1_key_pressed {
                 self.play_demo(0);
-            } else if self.keyboard.gIsF2KeyPressed {
+            } else if self.keyboard.g_is_f2_key_pressed {
                 self.play_demo(1);
-            } else if self.keyboard.gIsF3KeyPressed {
+            } else if self.keyboard.g_is_f3_key_pressed {
                 self.play_demo(2);
-            } else if self.keyboard.gIsF4KeyPressed {
+            } else if self.keyboard.g_is_f4_key_pressed {
                 self.play_demo(3);
-            } else if self.keyboard.gIsF5KeyPressed {
+            } else if self.keyboard.g_is_f5_key_pressed {
                 self.play_demo(4);
-            } else if self.keyboard.gIsF6KeyPressed {
+            } else if self.keyboard.g_is_f6_key_pressed {
                 self.play_demo(5);
-            } else if self.keyboard.gIsF7KeyPressed {
+            } else if self.keyboard.g_is_f7_key_pressed {
                 self.play_demo(6);
-            } else if self.keyboard.gIsF8KeyPressed {
+            } else if self.keyboard.g_is_f8_key_pressed {
                 self.play_demo(7);
-            } else if self.keyboard.gIsF9KeyPressed {
+            } else if self.keyboard.g_is_f9_key_pressed {
                 self.play_demo(8);
-            } else if self.keyboard.gIsF10KeyPressed {
+            } else if self.keyboard.g_is_f10_key_pressed {
                 self.play_demo(9);
-            } else if self.keyboard.gIsNumpadDividePressed
+            } else if self.keyboard.g_is_numpad_divide_pressed
                 && self.demo_manager.demo_file_name.len() != 0
                 && self.demo_manager.file_is_demo
             {
                 self.demo_manager.g_is_sp_demo_available_to_run = 1;
                 self.play_demo(0);
-            } else if self.keyboard.gIsF12KeyPressed && self.demo_manager.demo_file_name.len() != 0
+            } else if self.keyboard.g_is_f12_key_pressed
+                && self.demo_manager.demo_file_name.len() != 0
             {
                 self.demo_manager.g_is_sp_demo_available_to_run = 1;
                 self.states.g_should_leave_main_menu = true;
@@ -1086,6 +1084,7 @@ impl Game<'_> {
             if self.mouse.g_mouse_button_status == MOUSE_BUTTON_RIGHT
             // Right button -> exit game
             {
+                println!("Right click");
                 self.g_should_exit_game = true;
                 break;
             } //else if self.keyboard.gIsEscapeKeyPressed
@@ -1104,6 +1103,7 @@ impl Game<'_> {
             }
 
             if self.mouse.g_mouse_button_status == MOUSE_BUTTON_LEFT {
+                println!("Left click");
                 self.g_automatic_demo_playback_countdown = 4200;
 
                 for i in 0..K_NUMBER_OF_MAIN_MENU_BUTTONS {
@@ -1434,8 +1434,8 @@ impl Game<'_> {
     fn draw_main_menum_button_borders(&mut self) {
         let mut color = 0;
 
-        if self.button_states.gPlayerListButtonPressed != false {
-            if self.button_states.gPlayerListUpButtonPressed == false {
+        if self.button_states.g_player_list_button_pressed != false {
+            if self.button_states.g_player_list_up_button_pressed == false {
                 color = 7;
             } else {
                 color = 0xD; // 13
@@ -1443,7 +1443,7 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[0], color);
-            if self.button_states.gPlayerListUpButtonPressed == false {
+            if self.button_states.g_player_list_up_button_pressed == false {
                 color = 0xD; // 13
             } else {
                 color = 7;
@@ -1451,14 +1451,14 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[1], color);
-            if self.button_states.gPlayerListDownButtonPressed == false {
+            if self.button_states.g_player_list_down_button_pressed == false {
                 color = 7;
             } else {
                 color = 0xD; // 13
             }
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[2], color);
-            if self.button_states.gPlayerListDownButtonPressed == false {
+            if self.button_states.g_player_list_down_button_pressed == false {
                 color = 0xD; // 13
             } else {
                 color = 7;
@@ -1466,11 +1466,11 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[3], color);
-            self.button_states.gPlayerListButtonPressed = false;
+            self.button_states.g_player_list_button_pressed = false;
         }
 
-        if self.button_states.gRankingListButtonPressed != false {
-            if self.button_states.gRankingListUpButtonPressed == false {
+        if self.button_states.g_ranking_list_button_pressed != false {
+            if self.button_states.g_ranking_list_up_button_pressed == false {
                 color = 7;
             } else {
                 color = 0xD; // 13
@@ -1478,7 +1478,7 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[4], color);
-            if self.button_states.gRankingListUpButtonPressed == false {
+            if self.button_states.g_ranking_list_up_button_pressed == false {
                 color = 0xD;
             } else {
                 color = 7;
@@ -1486,7 +1486,7 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[5], color);
-            if self.button_states.gRankingListDownButtonPressed == false {
+            if self.button_states.g_ranking_list_down_button_pressed == false {
                 color = 7;
             } else {
                 color = 0xD;
@@ -1494,7 +1494,7 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[6], color);
-            if self.button_states.gRankingListDownButtonPressed == false {
+            if self.button_states.g_ranking_list_down_button_pressed == false {
                 color = 0xD;
             } else {
                 color = 7;
@@ -1502,13 +1502,13 @@ impl Game<'_> {
 
             self.graphics
                 .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[7], color);
-            self.button_states.gRankingListButtonPressed = false;
+            self.button_states.g_ranking_list_button_pressed = false;
         }
 
-        if self.button_states.gLevelListButtonPressed == false {
+        if self.button_states.g_level_list_button_pressed == false {
             return;
         }
-        if self.button_states.gLevelListUpButtonPressed == false {
+        if self.button_states.g_level_list_up_button_pressed == false {
             color = 7;
         } else {
             color = 0xD;
@@ -1516,7 +1516,7 @@ impl Game<'_> {
 
         self.graphics
             .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[8], color);
-        if self.button_states.gLevelListUpButtonPressed == false {
+        if self.button_states.g_level_list_up_button_pressed == false {
             color = 0xD;
         } else {
             color = 7;
@@ -1524,7 +1524,7 @@ impl Game<'_> {
 
         self.graphics
             .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[9], color);
-        if self.button_states.gLevelListDownButtonPressed == false {
+        if self.button_states.g_level_list_down_button_pressed == false {
             color = 7;
         } else {
             color = 0xD;
@@ -1532,7 +1532,7 @@ impl Game<'_> {
 
         self.graphics
             .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[10], color);
-        if self.button_states.gLevelListDownButtonPressed == false {
+        if self.button_states.g_level_list_down_button_pressed == false {
             color = 0xD;
         } else {
             color = 7;
@@ -1540,26 +1540,60 @@ impl Game<'_> {
 
         self.graphics
             .draw_main_menu_button_border(K_MAIN_MENU_BUTTON_BORDERS[11], color);
-        self.button_states.gLevelListButtonPressed = false;
+        self.button_states.g_level_list_button_pressed = false;
     }
 
-    fn handleNewPlayerOptionClick(&mut self) {}
-    fn handleDeletePlayerOptionClick(&mut self) {}
-    fn handleSkipLevelOptionClick(&mut self) {}
-    fn handleStatisticsOptionClick(&mut self) {}
-    fn handleGfxTutorOptionClick(&mut self) {}
-    fn handleDemoOptionClick(&mut self) {}
-    fn handleControlsOptionClick(&mut self) {}
-    fn handleRankingListScrollUp(&mut self) {}
-    fn handleRankingListScrollDown(&mut self) {}
-    fn handleOkButtonClick(&mut self) {}
-    fn handleFloppyDiskButtonClick(&mut self) {}
-    fn handlePlayerListScrollUp(&mut self) {}
-    fn handlePlayerListScrollDown(&mut self) {}
-    fn handlePlayerListClick(&mut self) {}
-    fn handleLevelListScrollUp(&mut self) {}
-    fn handleLevelListScrollDown(&mut self) {}
-    fn handleLevelCreditsClick(&mut self) {}
+    fn handle_new_player_option_click(&mut self) {
+        println!("handle_new_player_option_click");
+    }
+    fn handle_delete_player_option_click(&mut self) {
+        println!("handle_delete_player_option_click");
+    }
+    fn handle_skip_level_option_click(&mut self) {
+        println!("handle_skip_level_option_click");
+    }
+    fn handle_statistics_option_click(&mut self) {
+        println!("handle_statistics_option_click");
+    }
+    fn handle_gfx_tutor_option_click(&mut self) {
+        println!("handle_gfx_tutor_option_click");
+    }
+    fn handle_demo_option_click(&mut self) {
+        println!("handle_demo_option_click");
+    }
+    fn handle_controls_option_click(&mut self) {
+        println!("handle_controls_option_click");
+    }
+    fn handle_ranking_list_scroll_up(&mut self) {
+        println!("handle_ranking_list_scroll_up");
+    }
+    fn handle_ranking_list_scroll_down(&mut self) {
+        println!("handle_ranking_list_scroll_down");
+    }
+    fn handle_ok_button_click(&mut self) {
+        println!("handle_ok_button_click");
+    }
+    fn handle_floppy_disk_button_click(&mut self) {
+        println!("handle_floppy_disk_button_click");
+    }
+    fn handle_player_list_scroll_up(&mut self) {
+        println!("handle_player_list_scroll_up");
+    }
+    fn handle_player_list_scroll_down(&mut self) {
+        println!("handle_player_list_scroll_down");
+    }
+    fn handle_player_list_click(&mut self) {
+        println!("handle_player_list_click");
+    }
+    fn handle_level_list_scroll_up(&mut self) {
+        println!("handle_level_list_scroll_up");
+    }
+    fn handle_level_list_scroll_down(&mut self) {
+        println!("handle_level_list_scroll_down");
+    }
+    fn handle_level_credits_click(&mut self) {
+        println!("handle_level_credits_click");
+    }
 
     fn fun_level(&mut self) {
         // TODO : implement function
@@ -1568,62 +1602,62 @@ impl Game<'_> {
     fn update_user_input(&mut self) {
         let mut directionKeyWasPressed = 0;
 
-        self.keyboard.gCurrentUserInput = UserInput::UserInputNone;
+        self.keyboard.g_current_user_input = UserInput::UserInputNone;
 
-        if self.isUpButtonPressed() {
-            self.keyboard.gCurrentUserInput = UserInput::UserInputUp;
+        if self.is_up_button_pressed() {
+            self.keyboard.g_current_user_input = UserInput::UserInputUp;
             directionKeyWasPressed = 1;
         }
 
-        if self.isLeftButtonPressed() {
-            self.keyboard.gCurrentUserInput = UserInput::UserInputLeft;
+        if self.is_left_button_pressed() {
+            self.keyboard.g_current_user_input = UserInput::UserInputLeft;
             directionKeyWasPressed = 1;
         }
 
-        if self.isDownButtonPressed() {
-            self.keyboard.gCurrentUserInput = UserInput::UserInputDown;
+        if self.is_down_button_pressed() {
+            self.keyboard.g_current_user_input = UserInput::UserInputDown;
             directionKeyWasPressed = 1;
         }
 
-        if self.isRightButtonPressed() {
-            self.keyboard.gCurrentUserInput = UserInput::UserInputRight;
+        if self.is_right_button_pressed() {
+            self.keyboard.g_current_user_input = UserInput::UserInputRight;
             directionKeyWasPressed = 1;
         }
 
-        if self.isActionButtonPressed() {
+        if self.is_action_button_pressed() {
             if directionKeyWasPressed == 1 {
-                self.keyboard.gCurrentUserInput += K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET;
+                self.keyboard.g_current_user_input += K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET;
             } else {
-                self.keyboard.gCurrentUserInput = UserInput::UserInputSpaceOnly;
+                self.keyboard.g_current_user_input = UserInput::UserInputSpaceOnly;
             }
         }
     }
 
-    fn isActionButtonPressed(&mut self) -> bool {
+    fn is_action_button_pressed(&mut self) -> bool {
         self.events
             .keyboard_state()
             .is_scancode_pressed(Scancode::Space)
     }
 
-    fn isUpButtonPressed(&mut self) -> bool {
+    fn is_up_button_pressed(&mut self) -> bool {
         self.events
             .keyboard_state()
             .is_scancode_pressed(Scancode::Up)
     }
 
-    fn isDownButtonPressed(&mut self) -> bool {
+    fn is_down_button_pressed(&mut self) -> bool {
         self.events
             .keyboard_state()
             .is_scancode_pressed(Scancode::Down)
     }
 
-    fn isLeftButtonPressed(&mut self) -> bool {
+    fn is_left_button_pressed(&mut self) -> bool {
         self.events
             .keyboard_state()
             .is_scancode_pressed(Scancode::Left)
     }
 
-    fn isRightButtonPressed(&mut self) -> bool {
+    fn is_right_button_pressed(&mut self) -> bool {
         self.events
             .keyboard_state()
             .is_scancode_pressed(Scancode::Right)

@@ -2,20 +2,20 @@ use std::ops::AddAssign;
 
 #[derive(Default, Clone)]
 pub struct Keys {
-    pub gIsF1KeyPressed: bool,
-    pub gIsF2KeyPressed: bool,
-    pub gIsF3KeyPressed: bool,
-    pub gIsF4KeyPressed: bool,
-    pub gIsF5KeyPressed: bool,
-    pub gIsF6KeyPressed: bool,
-    pub gIsF7KeyPressed: bool,
-    pub gIsF8KeyPressed: bool,
-    pub gIsF9KeyPressed: bool,
-    pub gIsF10KeyPressed: bool,
-    pub gIsF12KeyPressed: bool,
-    pub gIsNumpadDividePressed: bool,
-    pub gIsEscapeKeyPressed: bool,
-    pub gCurrentUserInput: UserInput,
+    pub g_is_f1_key_pressed: bool,
+    pub g_is_f2_key_pressed: bool,
+    pub g_is_f3_key_pressed: bool,
+    pub g_is_f4_key_pressed: bool,
+    pub g_is_f5_key_pressed: bool,
+    pub g_is_f6_key_pressed: bool,
+    pub g_is_f7_key_pressed: bool,
+    pub g_is_f8_key_pressed: bool,
+    pub g_is_f9_key_pressed: bool,
+    pub g_is_f10_key_pressed: bool,
+    pub g_is_f12_key_pressed: bool,
+    pub g_is_numpad_divide_pressed: bool,
+    pub g_is_escape_key_pressed: bool,
+    pub g_current_user_input: UserInput,
 }
 
 #[derive(Default, Clone, Copy)]

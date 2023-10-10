@@ -1,14 +1,14 @@
 #[derive(Default)]
 pub struct ButtonStatus {
-    pub gPlayerListButtonPressed: bool,
-    pub gPlayerListUpButtonPressed: bool,
-    pub gPlayerListDownButtonPressed: bool,
-    pub gRankingListButtonPressed: bool,
-    pub gRankingListUpButtonPressed: bool,
-    pub gRankingListDownButtonPressed: bool,
-    pub gLevelListButtonPressed: bool,
-    pub gLevelListUpButtonPressed: bool,
-    pub gLevelListDownButtonPressed: bool,
+    pub g_player_list_button_pressed: bool,
+    pub g_player_list_up_button_pressed: bool,
+    pub g_player_list_down_button_pressed: bool,
+    pub g_ranking_list_button_pressed: bool,
+    pub g_ranking_list_up_button_pressed: bool,
+    pub g_ranking_list_down_button_pressed: bool,
+    pub g_level_list_button_pressed: bool,
+    pub g_level_list_up_button_pressed: bool,
+    pub g_level_list_down_button_pressed: bool,
 }
 #[derive(PartialEq)]
 pub enum ButtonBorderLineType {
@@ -984,118 +984,118 @@ pub const K_MAIN_MENU_BUTTON_DESCRIPTORS: [ButtonDescriptor; K_NUMBER_OF_MAIN_ME
         start_y: 6,
         end_x: 157,
         end_y: 14,
-        callback: |game| game.handleNewPlayerOptionClick(), // New player
+        callback: |game| game.handle_new_player_option_click(), // New player
     },
     ButtonDescriptor {
         start_x: 5,
         start_y: 15,
         end_x: 157,
         end_y: 23,
-        callback: |game| game.handleDeletePlayerOptionClick(), // Delete player
+        callback: |game| game.handle_delete_player_option_click(), // Delete player
     },
     ButtonDescriptor {
         start_x: 5,
         start_y: 24,
         end_x: 157,
         end_y: 32,
-        callback: |game| game.handleSkipLevelOptionClick(), // Skip level
+        callback: |game| game.handle_skip_level_option_click(), // Skip level
     },
     ButtonDescriptor {
         start_x: 5,
         start_y: 33,
         end_x: 157,
         end_y: 41,
-        callback: |game| game.handleStatisticsOptionClick(), // Statistics
+        callback: |game| game.handle_statistics_option_click(), // Statistics
     },
     ButtonDescriptor {
         start_x: 5,
         start_y: 42,
         end_x: 157,
         end_y: 50,
-        callback: |game| game.handleGfxTutorOptionClick(), // GFX-tutor
+        callback: |game| game.handle_gfx_tutor_option_click(), // GFX-tutor
     },
     ButtonDescriptor {
         start_x: 5,
         start_y: 51,
         end_x: 157,
         end_y: 59,
-        callback: |game| game.handleDemoOptionClick(), // Demo
+        callback: |game| game.handle_demo_option_click(), // Demo
     },
     ButtonDescriptor {
         start_x: 5,
         start_y: 60,
         end_x: 157,
         end_y: 69,
-        callback: |game| game.handleControlsOptionClick(), // Controls
+        callback: |game| game.handle_controls_option_click(), // Controls
     },
     ButtonDescriptor {
         start_x: 140,
         start_y: 90,
         end_x: 155,
         end_y: 108,
-        callback: |game| game.handleRankingListScrollUp(), // Rankings arrow up
+        callback: |game| game.handle_ranking_list_scroll_up(), // Rankings arrow up
     },
     ButtonDescriptor {
         start_x: 140,
         start_y: 121,
         end_x: 155,
         end_y: 138,
-        callback: |game| game.handleRankingListScrollDown(), // Rankings arrow down
+        callback: |game| game.handle_ranking_list_scroll_down(), // Rankings arrow down
     },
     ButtonDescriptor {
         start_x: 96,
         start_y: 140,
         end_x: 115,
         end_y: 163,
-        callback: |game| game.handleOkButtonClick(), // Ok button
+        callback: |game| game.handle_ok_button_click(), // Ok button
     },
     ButtonDescriptor {
         start_x: 83,
         start_y: 168,
         end_x: 126,
         end_y: 192,
-        callback: |game| game.handleFloppyDiskButtonClick(), // Insert data disk according to https://supaplex.fandom.com/wiki/Main_menu
+        callback: |game| game.handle_floppy_disk_button_click(), // Insert data disk according to https://supaplex.fandom.com/wiki/Main_menu
     },
     ButtonDescriptor {
         start_x: 11,
         start_y: 142,
         end_x: 67,
         end_y: 153,
-        callback: |game| game.handlePlayerListScrollUp(), // Players arrow up
+        callback: |game| game.handle_player_list_scroll_up(), // Players arrow up
     },
     ButtonDescriptor {
         start_x: 11,
         start_y: 181,
         end_x: 67,
         end_y: 192,
-        callback: |game| game.handlePlayerListScrollDown(), // Players arrow down
+        callback: |game| game.handle_player_list_scroll_down(), // Players arrow down
     },
     ButtonDescriptor {
         start_x: 11,
         start_y: 154,
         end_x: 67,
         end_y: 180,
-        callback: |game| game.handlePlayerListClick(), // Players list area
+        callback: |game| game.handle_player_list_click(), // Players list area
     },
     ButtonDescriptor {
         start_x: 142,
         start_y: 142,
         end_x: 306,
         end_y: 153,
-        callback: |game| game.handleLevelListScrollUp(), // Levels arrow up
+        callback: |game| game.handle_level_list_scroll_up(), // Levels arrow up
     },
     ButtonDescriptor {
         start_x: 142,
         start_y: 181,
         end_x: 306,
         end_y: 192,
-        callback: |game| game.handleLevelListScrollDown(), // Levels arrow down
+        callback: |game| game.handle_level_list_scroll_down(), // Levels arrow down
     },
     ButtonDescriptor {
         start_x: 297,
         start_y: 37,
         end_x: 312,
         end_y: 52,
-        callback: |game| game.handleLevelCreditsClick(), // Credits
+        callback: |game| game.handle_level_credits_click(), // Credits
     },
 ];
