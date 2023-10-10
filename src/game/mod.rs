@@ -45,7 +45,6 @@ use mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use sdl2::keyboard::Scancode;
-use sdl2::mouse::MouseButton;
 use sdl2::EventPump;
 use sounds::Sounds;
 use std::cell::RefCell;
@@ -1600,32 +1599,32 @@ impl Game<'_> {
     }
 
     fn update_user_input(&mut self) {
-        let mut directionKeyWasPressed = 0;
+        let mut direction_key_was_pressed = 0;
 
         self.keyboard.g_current_user_input = UserInput::UserInputNone;
 
         if self.is_up_button_pressed() {
             self.keyboard.g_current_user_input = UserInput::UserInputUp;
-            directionKeyWasPressed = 1;
+            direction_key_was_pressed = 1;
         }
 
         if self.is_left_button_pressed() {
             self.keyboard.g_current_user_input = UserInput::UserInputLeft;
-            directionKeyWasPressed = 1;
+            direction_key_was_pressed = 1;
         }
 
         if self.is_down_button_pressed() {
             self.keyboard.g_current_user_input = UserInput::UserInputDown;
-            directionKeyWasPressed = 1;
+            direction_key_was_pressed = 1;
         }
 
         if self.is_right_button_pressed() {
             self.keyboard.g_current_user_input = UserInput::UserInputRight;
-            directionKeyWasPressed = 1;
+            direction_key_was_pressed = 1;
         }
 
         if self.is_action_button_pressed() {
-            if directionKeyWasPressed == 1 {
+            if direction_key_was_pressed == 1 {
                 self.keyboard.g_current_user_input += K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET;
             } else {
                 self.keyboard.g_current_user_input = UserInput::UserInputSpaceOnly;
