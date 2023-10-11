@@ -46,6 +46,7 @@ use mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use sdl2::keyboard::Scancode;
+use sdl2::sys::SDL_EventType;
 use sdl2::EventPump;
 use sounds::Sounds;
 use std::cell::RefCell;
@@ -342,6 +343,11 @@ impl Game<'_> {
     }
 
     fn wait_for_key_press_or_mouse_click(&mut self) {
+        self.events.pump_events();
+        self.sdl_context.borrow_mut().event().unwrap().flush_events(
+            SDL_EventType::SDL_KEYDOWN as u32,
+            SDL_EventType::SDL_MOUSEWHEEL as u32,
+        );
         loop {
             for event in self.events.poll_iter() {
                 match event {
@@ -911,7 +917,7 @@ impl Game<'_> {
 
         let previous_level_name = match self.states.g_current_selected_level_index {
             0 | 1 => String::new(),
-            _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 2)]
+            _ => self.g_level_list_data[self.states.g_current_selected_level_index as usize - 2]
                 .name
                 .clone(),
         };
@@ -924,7 +930,7 @@ impl Game<'_> {
 
         self.states.g_current_level_name = match self.states.g_current_selected_level_index {
             0 => String::new(),
-            _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 1)]
+            _ => self.g_level_list_data[self.states.g_current_selected_level_index as usize - 1]
                 .name
                 .clone(),
         };
@@ -1363,8 +1369,8 @@ impl Game<'_> {
     }
 
     fn scroll_left_to_main_menu(&mut self) {
-        let current_screen_pixels = self.graphics.video.borrow_mut().get_screen_pixels();
-        let menu_screen_pixels = self.graphics.video.borrow_mut().get_screen_pixels();
+        let current_screen_pixels = self.graphics.video.borrow().get_screen_pixels();
+        let menu_screen_pixels = self.graphics.video.borrow().get_screen_pixels(); // Appel en double?
 
         self.graphics.draw_menu_background();
         self.g_should_autoselect_next_level_to_play = false;
@@ -1372,7 +1378,7 @@ impl Game<'_> {
         self.prepare_level_data_for_current_player();
         self.draw_menu_title_and_demo_level_result();
 
-        let menu_screen_pixels = self.graphics.video.borrow_mut().get_screen_pixels();
+        let menu_screen_pixels = self.graphics.video.borrow().get_screen_pixels();
 
         const K_NUMBER_OF_STEPS: u32 = 80;
 
@@ -1632,6 +1638,77 @@ impl Game<'_> {
 
     fn handle_level_credits_click(&mut self) {
         println!("handle_level_credits_click");
+
+        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+
+        let screen_pixel_backup = self.video.borrow().get_screen_pixels();
+
+        self.graphics.draw_back_background();
+
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            80,
+            10,
+            15,
+            String::from("SUPAPLEX  BY DREAM FACTORY"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            56,
+            40,
+            15,
+            String::from("ORIGINAL DESIGN BY PHILIP JESPERSEN"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            88,
+            50,
+            15,
+            String::from("AND MICHAEL STOPP"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            56,
+            90,
+            15,
+            String::from("NEARLY ALL LEVELS BY MICHEAL STOPP"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            64,
+            100,
+            15,
+            String::from("A FEW LEVELS BY PHILIP JESPERSEN"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            56,
+            110,
+            15,
+            String::from("HARDLY ANY LEVELS BY BARBARA STOPP"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            64,
+            170,
+            15,
+            String::from("NOTE: PRESS ENTER TO REMOVE PANEL"),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            64,
+            190,
+            15,
+            String::from("(C) DIGITAL INTEGRATION LTD 1991"),
+        );
+
+        let palette = self
+            .graphics
+            .get_palette(PaletteType::InformationScreenPalette);
+        self.graphics.fade_to_palette(palette);
+
+        self.wait_for_key_press_or_mouse_click();
+
+        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+
+        self.video
+            .borrow_mut()
+            .set_screen_pixels(screen_pixel_backup);
+
+        let palette = self.graphics.get_palette(PaletteType::GamePalette);
+        self.graphics.fade_to_palette(palette);
     }
 
     fn fun_level(&mut self) {
@@ -1717,7 +1794,7 @@ impl Game<'_> {
         let left_button_pressed = mouse_state.left() as u8;
         let right_button_pressed = mouse_state.right() as u8;
 
-        let (window_width, window_height) = self.video.borrow_mut().get_window_size();
+        let (window_width, window_height) = self.video.borrow().get_window_size();
 
         if window_width != 0 && window_height != 0 {
             x = x * K_SCREEN_WIDTH as i32 / window_width as i32;

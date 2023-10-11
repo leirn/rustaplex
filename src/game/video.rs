@@ -254,17 +254,25 @@ impl Video<'_> {
         self.g_renderer.present();
     }
 
-    pub fn get_screen_pixels(&mut self) -> [u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH] {
+    pub fn get_screen_pixels(&self) -> [u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH] {
         let l = self.g_screen_surface.without_lock().unwrap();
 
         let mut value = [0_u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH];
         for i in 0..K_FULL_SCREEN_FRAMEBUFFER_LENGTH {
+            // Optimisation possible ?
             value[i] = l[i];
         }
         value
     }
 
-    pub fn get_window_size(&mut self) -> (u32, u32) {
+    pub fn set_screen_pixels(&mut self, pixels: [u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]) {
+        for i in 0..K_FULL_SCREEN_FRAMEBUFFER_LENGTH {
+            // Optimisation possible ?
+            self.set_pixel(i, pixels[i]);
+        }
+    }
+
+    pub fn get_window_size(&self) -> (u32, u32) {
         self.g_renderer.window().size()
     }
 }
