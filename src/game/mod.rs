@@ -459,7 +459,7 @@ impl Game<'_> {
         let mut file_data = [0_u8; K_LEVEL_DATA_LENGTH];
 
         for i in 0..K_NUMBER_OF_LEVEL {
-            let seek_offset = /*0x5A6 + */ i * K_LEVEL_DATA_LENGTH;
+            let seek_offset = i * K_LEVEL_DATA_LENGTH;
             file.seek(SeekFrom::Start(seek_offset as u64)).expect(
                 format!(
                     "Error while seeking offset {} in {}",
@@ -471,8 +471,6 @@ impl Game<'_> {
                 .expect(format!("Error while reading {}", G_LEVELS_LST_FILENAME).as_str());
 
             let level = Level::from_raw(i, file_data);
-
-            println!("{}", level.name);
 
             self.g_level_list_data[i] = Box::new(level);
         }
@@ -913,8 +911,7 @@ impl Game<'_> {
 
         let previous_level_name = match self.states.g_current_selected_level_index {
             0 | 1 => String::new(),
-            _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 2)
-                * K_LIST_LEVEL_NAME_LENGTH]
+            _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 2)]
                 .name
                 .clone(),
         };
@@ -927,8 +924,7 @@ impl Game<'_> {
 
         self.states.g_current_level_name = match self.states.g_current_selected_level_index {
             0 => String::new(),
-            _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 1)
-                * K_LIST_LEVEL_NAME_LENGTH]
+            _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 1)]
                 .name
                 .clone(),
         };
@@ -940,7 +936,7 @@ impl Game<'_> {
         );
 
         let next_level_name = self.g_level_list_data
-            [self.states.g_current_selected_level_index as usize * K_LIST_LEVEL_NAME_LENGTH]
+            [self.states.g_current_selected_level_index as usize]
             .name
             .clone();
         self.draw_text_with_chars6_font_with_opaque_background_if_possible(
