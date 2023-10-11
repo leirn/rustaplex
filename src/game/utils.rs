@@ -24,3 +24,7 @@ pub fn convert_16le(value: u16) -> u16 {
     // SDL_SwapLE16(value) not found in crate interface
     value.swap_bytes()
 }
+
+pub fn clamp<T: Ord>(v: T, a: T, b: T) -> T {
+    std::cmp::min(std::cmp::max(a, v), b)
+}
