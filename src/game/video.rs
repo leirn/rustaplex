@@ -263,4 +263,8 @@ impl Video<'_> {
         }
         value
     }
+
+    pub fn get_window_size(&mut self) -> (u32, u32) {
+        self.g_renderer.window().size()
+    }
 }
