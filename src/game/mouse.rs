@@ -1,8 +1,8 @@
 #[derive(Default)]
 pub struct Mouse {
-    pub g_mouse_x: i32,
-    pub g_mouse_y: i32,
-    pub g_mouse_button_status: u8,
+    pub x: i32,
+    pub y: i32,
+    pub button_status: u8,
 }
 
 pub const MOUSE_BUTTON_LEFT: u8 = 1;

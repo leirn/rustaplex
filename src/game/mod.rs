@@ -29,6 +29,7 @@ mod utils;
 pub mod video;
 
 use self::graphics::{G_BLACK_PALETTE, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use self::level::Level;
 use button_borders::{
     ButtonStatus, K_MAIN_MENU_BUTTON_BORDERS, K_MAIN_MENU_BUTTON_DESCRIPTORS,
     K_NUMBER_OF_MAIN_MENU_BUTTONS,
@@ -63,7 +64,7 @@ pub struct Game<'a> {
     events: EventPump,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     g_random_generator_seed: u16,
-    g_level_list_data: [String; K_NUMBER_OF_LEVEL_WITH_PADDING],
+    g_level_list_data: Box<[Box<Level>; K_NUMBER_OF_LEVEL_WITH_PADDING]>,
     g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
     g_is_game_busy: bool,
@@ -91,14 +92,14 @@ pub struct Game<'a> {
     button_states: ButtonStatus,
     keyboard: Keys,
     mouse: Mouse,
-    g_level_list_throttle_current_counter: u8,
-    g_level_list_throttle_next_counter: u8,
-    g_player_list_throttle_current_counter: u8,
-    g_player_list_throttle_next_counter: u8,
-    g_ranking_list_throttle_current_counter: u8,
-    g_ranking_list_throttle_next_counter: u8,
-    g_level_set_rotation_throttle_current_counter: u8,
-    g_level_set_rotation_throttle_next_counter: u8,
+    g_level_list_throttle_current_counter: u16,
+    g_level_list_throttle_next_counter: u16,
+    g_player_list_throttle_current_counter: u16,
+    g_player_list_throttle_next_counter: u16,
+    g_ranking_list_throttle_current_counter: u16,
+    g_ranking_list_throttle_next_counter: u16,
+    g_level_set_rotation_throttle_current_counter: u16,
+    g_level_set_rotation_throttle_next_counter: u16,
 }
 
 impl Game<'_> {
@@ -115,8 +116,9 @@ impl Game<'_> {
             events: events,
             sdl_context: sdl_context,
             g_random_generator_seed: 0,
-            g_level_list_data: [(); K_NUMBER_OF_LEVEL_WITH_PADDING]
-                .map(|_| String::from("                           ")),
+            g_level_list_data: Box::new(
+                [(); K_NUMBER_OF_LEVEL_WITH_PADDING].map(|_| Box::new(Level::new())),
+            ),
             g_player_list_data: [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new()),
             g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
                 .map(|_| HallOfFameEntry::new()),
@@ -315,8 +317,7 @@ impl Game<'_> {
 
             self.graphics.video_loop();
 
-            let mut event_pump = self.sdl_context.borrow_mut().event_pump().unwrap();
-            for event in event_pump.poll_iter() {
+            for event in self.events.poll_iter() {
                 match event {
                     Event::Quit { .. }
                     | Event::KeyDown {
@@ -425,10 +426,11 @@ impl Game<'_> {
 
     fn read_levels_lst(&mut self) {
         // Re-init g_level_list_data
-        self.g_level_list_data = [(); K_NUMBER_OF_LEVEL_WITH_PADDING]
-            .map(|_| String::from("                           "));
-        self.g_level_list_data[K_LAST_LEVEL_INDEX] = String::from("- REPLAY SKIPPED LEVELS!! -");
-        self.g_level_list_data[K_LAST_LEVEL_INDEX + 1] =
+        self.g_level_list_data =
+            Box::new([(); K_NUMBER_OF_LEVEL_WITH_PADDING].map(|_| Box::new(Level::new())));
+        self.g_level_list_data[K_LAST_LEVEL_INDEX].name =
+            String::from("- REPLAY SKIPPED LEVELS!! -");
+        self.g_level_list_data[K_LAST_LEVEL_INDEX + 1].name =
             String::from("---- UNBELIEVEABLE!!!! ----");
 
         let path = format!(
@@ -454,10 +456,10 @@ impl Game<'_> {
             .as_str(),
         );
 
-        let mut file_data = [0_u8; K_LEVEL_NAME_LENGTH - 1];
+        let mut file_data = [0_u8; K_LEVEL_DATA_LENGTH];
 
         for i in 0..K_NUMBER_OF_LEVEL {
-            let seek_offset = 0x5A6 + i * K_LEVEL_DATA_LENGTH;
+            let seek_offset = /*0x5A6 + */ i * K_LEVEL_DATA_LENGTH;
             file.seek(SeekFrom::Start(seek_offset as u64)).expect(
                 format!(
                     "Error while seeking offset {} in {}",
@@ -468,11 +470,11 @@ impl Game<'_> {
             file.read(&mut file_data)
                 .expect(format!("Error while reading {}", G_LEVELS_LST_FILENAME).as_str());
 
-            let level_name = format!("{:03} {}", i, String::from_utf8_lossy(&file_data));
+            let level = Level::from_raw(i, file_data);
 
-            self.g_level_list_data[i] = level_name;
+            println!("{}", level.name);
 
-            // TODO ; currently load level name but not data
+            self.g_level_list_data[i] = Box::new(level);
         }
     }
 
@@ -913,6 +915,7 @@ impl Game<'_> {
             0 | 1 => String::new(),
             _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 2)
                 * K_LIST_LEVEL_NAME_LENGTH]
+                .name
                 .clone(),
         };
         self.draw_text_with_chars6_font_with_opaque_background_if_possible(
@@ -926,6 +929,7 @@ impl Game<'_> {
             0 => String::new(),
             _ => self.g_level_list_data[(self.states.g_current_selected_level_index as usize - 1)
                 * K_LIST_LEVEL_NAME_LENGTH]
+                .name
                 .clone(),
         };
         self.draw_text_with_chars6_font_with_opaque_background_if_possible(
@@ -937,6 +941,7 @@ impl Game<'_> {
 
         let next_level_name = self.g_level_list_data
             [self.states.g_current_selected_level_index as usize * K_LIST_LEVEL_NAME_LENGTH]
+            .name
             .clone();
         self.draw_text_with_chars6_font_with_opaque_background_if_possible(
             144,
@@ -987,24 +992,12 @@ impl Game<'_> {
             self.graphics.video_loop();
             (self.states.g_frame_counter, _) = self.states.g_frame_counter.overflowing_add(1);
 
-            let mouse_state = self.events.mouse_state();
+            let mouse_status = self.get_mouse_status();
 
-            let mouse_x = mouse_state.x();
-            let mouse_y = mouse_state.y();
-            let mouse_button_status = mouse_state.left() as u8 | ((mouse_state.right() as u8) << 1);
-
-            println!(
-                "Mouse status : {}, {}, {}",
-                mouse_button_status, mouse_x, mouse_y
-            );
-
-            self.mouse.g_mouse_button_status = mouse_button_status;
-            if self.mouse.g_mouse_x != mouse_x || self.mouse.g_mouse_y != mouse_y {
+            if self.mouse.x != mouse_status.x || self.mouse.y != mouse_status.y {
                 self.g_automatic_demo_playback_countdown = 4200;
             }
-
-            self.mouse.g_mouse_x = mouse_x;
-            self.mouse.g_mouse_y = mouse_y;
+            self.mouse = mouse_status;
             //restoreLastMouseAreaBitmap();
             //saveLastMouseAreaBitmap();
             //drawMouseCursor();
@@ -1080,7 +1073,7 @@ impl Game<'_> {
                     .replace_range(3..6, "---");
                 continue;
             }
-            if self.mouse.g_mouse_button_status == MOUSE_BUTTON_RIGHT
+            if self.mouse.button_status == MOUSE_BUTTON_RIGHT
             // Right button -> exit game
             {
                 println!("Right click");
@@ -1101,19 +1094,21 @@ impl Game<'_> {
                 break;
             }
 
-            if self.mouse.g_mouse_button_status == MOUSE_BUTTON_LEFT {
-                println!("Left click");
+            if self.mouse.button_status == MOUSE_BUTTON_LEFT {
+                println!("Left click : x = {}, y = {}", self.mouse.x, self.mouse.y);
                 self.g_automatic_demo_playback_countdown = 4200;
 
                 for i in 0..K_NUMBER_OF_MAIN_MENU_BUTTONS {
                     let button_descriptor = &K_MAIN_MENU_BUTTON_DESCRIPTORS[i];
 
                     //checkmousecoords:
-                    if self.mouse.g_mouse_x >= button_descriptor.start_x
-                        && self.mouse.g_mouse_y >= button_descriptor.start_y
-                        && self.mouse.g_mouse_x <= button_descriptor.end_x
-                        && self.mouse.g_mouse_y <= button_descriptor.end_y
+                    if self.mouse.x >= button_descriptor.start_x
+                        && self.mouse.y >= button_descriptor.start_y
+                        && self.mouse.x <= button_descriptor.end_x
+                        && self.mouse.y <= button_descriptor.end_y
                     {
+                        println!("Button find !");
+
                         (button_descriptor.callback)(self);
                         break;
                     }
@@ -1586,10 +1581,59 @@ impl Game<'_> {
     }
     fn handle_level_list_scroll_up(&mut self) {
         println!("handle_level_list_scroll_up");
+
+        self.button_states.g_level_list_button_pressed = true;
+        self.button_states.g_level_list_down_button_pressed = false;
+        self.button_states.g_level_list_up_button_pressed = true;
+
+        if self.states.g_frame_counter - self.g_level_list_throttle_current_counter
+            < self.g_level_list_throttle_next_counter
+        {
+            return;
+        }
+
+        self.g_level_list_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_level_list_throttle_current_counter > 1 {
+            self.g_level_list_throttle_current_counter -= 1;
+        }
+
+        if self.states.g_current_selected_level_index <= 1 {
+            return;
+        }
+        self.states.g_current_selected_level_index -= 1;
+        //restoreLastMouseAreaBitmap();
+        self.draw_level_list();
+        //saveLastMouseAreaBitmap();
+        //drawMouseCursor();
     }
+
     fn handle_level_list_scroll_down(&mut self) {
         println!("handle_level_list_scroll_down");
+        self.button_states.g_level_list_button_pressed = true;
+        self.button_states.g_level_list_down_button_pressed = true;
+        self.button_states.g_level_list_up_button_pressed = false;
+
+        if self.states.g_frame_counter - self.g_level_list_throttle_current_counter
+            < self.g_level_list_throttle_next_counter
+        {
+            return;
+        }
+
+        self.g_level_list_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_level_list_throttle_current_counter > 1 {
+            self.g_level_list_throttle_current_counter -= 1;
+        }
+
+        if self.states.g_current_selected_level_index >= 113 {
+            return;
+        }
+        self.states.g_current_selected_level_index += 1;
+        //restoreLastMouseAreaBitmap();
+        self.draw_level_list();
+        //saveLastMouseAreaBitmap();
+        //drawMouseCursor();
     }
+
     fn handle_level_credits_click(&mut self) {
         println!("handle_level_credits_click");
     }
@@ -1660,5 +1704,37 @@ impl Game<'_> {
         self.events
             .keyboard_state()
             .is_scancode_pressed(Scancode::Right)
+    }
+
+    fn get_mouse_status(&mut self) -> Mouse {
+        // Returns coordinate X in CX (0-320) and coordinate Y in DX (0-200).
+        // Also button status in BX.
+
+        self.handle_system_events();
+
+        self.events.pump_events();
+
+        let mouse_state = self.events.mouse_state();
+
+        let mut x = mouse_state.x();
+        let mut y = mouse_state.y();
+        let left_button_pressed = mouse_state.left() as u8;
+        let right_button_pressed = mouse_state.right() as u8;
+
+        let (window_width, window_height) = self.video.borrow_mut().get_window_size();
+
+        if window_width != 0 && window_height != 0 {
+            x = x * K_SCREEN_WIDTH as i32 / window_width as i32;
+            y = y * K_SCREEN_HEIGHT as i32 / window_height as i32;
+        }
+
+        // Limit coordinates as in the original game
+        x = utils::clamp(x, 16, 304);
+        y = utils::clamp(y, 8, 192);
+        Mouse {
+            x,
+            y,
+            button_status: right_button_pressed << 1 | left_button_pressed,
+        }
     }
 }

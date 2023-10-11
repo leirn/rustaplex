@@ -184,7 +184,7 @@ impl DemoManager {
                     if bytes < K_LEVEL_DATA_LENGTH {
                         return i as u8;
                     }
-                    let level = Level::from_raw(level_buffer);
+                    let level = Level::from_raw(1, level_buffer);
                     self.g_demos.level[i] = level.clone();
                     self.g_demo_random_seeds[i] = level.random_seed;
                 }
@@ -270,18 +270,18 @@ const K_MAX_DEMO_SIGNATURE_SIZE: usize = K_MAX_DEMO_SIGNATURE_LENGTH + 1;
 
 // This struct defines the demo format of the game after the speed fix mods (which includes a demo of the original
 // format inside).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct DemoFile {
     pub level: Level,
     pub base_demo: BaseDemo,
     pub signature: [u8; K_MAX_DEMO_SIGNATURE_SIZE], // text that ends with 0xFF
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Demos {
     pub demo_first_indices: [u16; K_NUMBER_OF_DEMOS + 1], // index of the last byte of all demos (starting at demo-segment:0000). there are 11 words because the end of this "list" is marked with 0xFFFF
     pub demo_data: [u8; 1 + K_MAX_DEMO_INPUT_STEPS + 1], // to fit at least one huge demo with 1 byte for level number, then all the possible steps, then 0xFF
-    pub level: [Level; K_NUMBER_OF_DEMOS],
+    pub level: Box<[Level; K_NUMBER_OF_DEMOS]>,
 }
 
 impl Demos {
@@ -289,7 +289,7 @@ impl Demos {
         Demos {
             demo_first_indices: [0xff; K_NUMBER_OF_DEMOS + 1],
             demo_data: [(); 1 + K_MAX_DEMO_INPUT_STEPS + 1].map(|_| 0),
-            level: [Level::new(); K_NUMBER_OF_DEMOS],
+            level: Box::new([(); K_NUMBER_OF_DEMOS].map(|_| Level::new())),
         }
     }
 }

@@ -17,13 +17,13 @@
 
 use crate::game::globals::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Level {
     pub tiles: [u8; K_LEVEL_SIZE], // [0-0x59F] of LevelTileType
     pub unused: [u8; 4],
     pub initial_gravitation: u8,
     pub speed_fix_magic_number: u8, // Used from versions 5.3 and up as: 20h + SpeedFix version number in hex format: v5.3 -> 73h, v6.2 -> 82h
-    pub name: [char; K_LEVEL_NAME_LENGTH - 1],
+    pub name: String,
     pub freeze_zonks: u8,            // 2 = on, anything else (including 1) = off
     pub number_of_infotrons: u8, // 0 means that Supaplex will count the total amount of Infotrons in the level, and use the low byte of that number. (A multiple of 256 Infotrons will then result in 0-to-eat, etc.!)
     pub number_of_special_ports: u8, // maximum 10
@@ -72,7 +72,7 @@ impl Level {
             scrambled_checksum: 0,
             scrambled_speed: 0,
             speed_fix_magic_number: 0,
-            name: [' '; K_LEVEL_NAME_LENGTH - 1],
+            name: String::new(),
             random_seed: 0,
             special_ports_info: [SpecialPortInfo::default(); K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS],
             tiles: [(); K_LEVEL_SIZE].map(|_| 0),
@@ -80,7 +80,7 @@ impl Level {
         }
     }
 
-    pub fn from_raw(raw_data: [u8; K_LEVEL_DATA_LENGTH]) -> Level {
+    pub fn from_raw(level_index: usize, raw_data: [u8; K_LEVEL_DATA_LENGTH]) -> Level {
         // TODO : fix type and data size issue
         let mut level = Level::new();
         let mut offset = 0;
@@ -114,9 +114,15 @@ impl Level {
         level.scrambled_checksum = raw_data[OFFSET_SCRAMBLED_CHECKSUM];
         level.scrambled_speed = raw_data[OFFSET_SCRAMBLED_SPEED];
         level.speed_fix_magic_number = raw_data[OFFSET_SPEED_FIX_MAGIC_NUMBER];
-        //level.name = raw_data[OFFSET_LEVEL_NAME..(OFFSET_LEVEL_NAME + K_LEVEL_NAME_LENGTH + 1)]; //TODO fix type issue
+        level.name = format!(
+            "{:03} {}",
+            level_index + 1,
+            String::from_utf8_lossy(
+                &raw_data[OFFSET_LEVEL_NAME..(OFFSET_LEVEL_NAME + K_LEVEL_NAME_LENGTH - 1)]
+            )
+        );
         level.random_seed =
-            (raw_data[OFFSET_RANDOM_SEED] as u16) << 8 + raw_data[OFFSET_RANDOM_SEED + 1] as u16; // LE or BE ?
+            (raw_data[OFFSET_RANDOM_SEED] as u16) << 8 | raw_data[OFFSET_RANDOM_SEED + 1] as u16; // LE or BE ?
         level.special_ports_info[0] = SpecialPortInfo::from_raw(
             &raw_data[OFFSET_SP_0..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_0)],
         );
@@ -148,11 +154,11 @@ impl Level {
             &raw_data[OFFSET_SP_9..(K_SPECIAL_PORT_STRUCT_SIZE + OFFSET_SP_9)],
         );
 
-        for i in 0..K_LEVEL_SIZE{
+        for i in 0..K_LEVEL_SIZE {
             level.tiles[i] = raw_data[offset + i];
         }
 
-        for i in 0..4{
+        for i in 0..4 {
             level.unused[i] = raw_data[OFFSET_UNUSED + i];
         }
 
