@@ -1588,12 +1588,14 @@ impl Game<'_> {
             String::from("YOUR NAME:             "),
         );
 
+        /*
         loop {
             let mouse_status = self.get_mouse_status();
             if mouse_status.button_status != 0 {
                 break;
             }
         }
+        */
         let mut last_pressed_character = '\0';
 
         loop {
@@ -1628,6 +1630,7 @@ impl Game<'_> {
             if character == '\n'
             // \n -> enter -> create player
             {
+                log::debug!("Creating player {new_player_name}");
                 break;
             }
             if character == '%'
@@ -1666,13 +1669,14 @@ impl Game<'_> {
             );
         }
 
+        /*
         loop {
             let mouse_status = self.get_mouse_status();
             if mouse_status.button_status != 0 {
                 break;
             }
         }
-
+        */
         // Completely empty name: ignore
         if new_player_name == "        " {
             self.draw_text_with_chars6_font_with_opaque_background_if_possible(
@@ -1701,7 +1705,7 @@ impl Game<'_> {
         // Move spaces at the end of the name to the beginning
         let trimmed_player_name = new_player_name.trim();
         let space_quantity = K_PLAYER_NAME_LENGTH - trimmed_player_name.len();
-        let new_player_name = String::from(" ").repeat(space_quantity) + new_player_name.as_str();
+        let new_player_name = String::from(" ").repeat(space_quantity) + trimmed_player_name;
 
         for i in 0..K_NUMBER_OF_PLAYERS {
             if self.g_player_list_data[i].name == new_player_name {
