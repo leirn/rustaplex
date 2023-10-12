@@ -2061,6 +2061,11 @@ impl Game<'_> {
     }
     fn handle_gfx_tutor_option_click(&mut self) {
         log::info!("handle_gfx_tutor_option_click");
+        self.draw_gfx_tutor_background(gScrollDestinationScreenBitmapData);
+        self.scroll_right_to_new_screen();
+        self.wait_for_key_press_or_mouse_click();
+        self.scroll_left_to_main_menu();
+        self.draw_menu_title_and_demo_level_result();
     }
     fn handle_demo_option_click(&mut self) {
         log::info!("handle_demo_option_click");
