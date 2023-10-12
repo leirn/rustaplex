@@ -1915,6 +1915,149 @@ impl Game<'_> {
 
     fn handle_statistics_option_click(&mut self) {
         log::info!("handle_statistics_option_click");
+        let current_player_entry =
+            self.g_player_list_data[self.states.g_current_player_index].clone();
+        if current_player_entry.name == "--------".to_string() {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                "NO PLAYER SELECTED     ".to_string(),
+            );
+            return;
+        }
+
+        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+
+        let screen_pixel_backup = self.video.borrow().get_screen_pixels();
+
+        self.graphics.draw_back_background();
+
+        let mut special_text = 0;
+
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            80,
+            20,
+            15,
+            "SUPAPLEX  BY DREAM FACTORY".to_string(),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            64,
+            50,
+            15,
+            "(C) DIGITAL INTEGRATION LTD 1991".to_string(),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            16,
+            60,
+            15,
+            "________________________________________________".to_string(),
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            80,
+            80,
+            15,
+            "SUPAPLEX PLAYER STATISTICS".to_string(),
+        );
+
+        let current_player_text = format!("CURRENT PLAYER :  {}", current_player_entry.name);
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            80,
+            100,
+            15,
+            current_player_text,
+        );
+
+        if current_player_entry.next_level_to_play == K_LAST_LEVEL_INDEX as u8 {
+            special_text = 1;
+        }
+
+        let current_level_text = format!(
+            "CURRENT LEVEL  :       {:03}",
+            current_player_entry.next_level_to_play
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            80,
+            110,
+            15,
+            current_level_text,
+        );
+
+        let used_time_text = format!(
+            "USED TIME      : {:03}:{:02}:{:02}",
+            current_player_entry.hours, current_player_entry.minutes, current_player_entry.seconds
+        );
+        self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+            80,
+            120,
+            15,
+            used_time_text,
+        );
+
+        let mut total_minutes =
+            current_player_entry.hours as u32 * 60 + current_player_entry.minutes as u32;
+
+        if current_player_entry.seconds >= 30 {
+            total_minutes += 1;
+        }
+
+        let average_time_string = "000.0";
+        let average_minutes_whole = total_minutes / current_player_entry.next_level_to_play as u32;
+        let average_minutes_fraction =
+            total_minutes % current_player_entry.next_level_to_play as u32;
+        let average_minutes_fraction =
+            average_minutes_fraction / current_player_entry.next_level_to_play as u32;
+        //convertNumberTo3DigitStringWithPadding0(average_minutes_fraction, &average_time_string[2]);
+
+        if average_minutes_whole == 0 {
+            special_text = 2;
+        }
+
+        let average_time_string =
+            format!("{:03}.{}", average_minutes_whole, average_minutes_fraction);
+
+        //convertNumberTo3DigitPaddedString(average_minutes_whole, average_time_string, 1);
+        if special_text == 1 {
+            self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+                24,
+                140,
+                15,
+                "YOU'VE COMPLETED ALL LEVELS! CONGRATULATIONS!!!".to_string(),
+            );
+        } else if special_text == 2 {
+            self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+                40,
+                140,
+                15,
+                "STILL UNDER ONE MINUTE (KEEP IT UP...)".to_string(),
+            );
+        } else {
+            let average_time_message = format!(
+                "AVERAGE TIME USED PER LEVEL  {} MINUTES",
+                average_time_string
+            );
+            self.draw_text_with_chars6_font_with_transparent_background_if_possible(
+                32,
+                140,
+                15,
+                average_time_message,
+            );
+        }
+
+        let palette = self
+            .graphics
+            .get_palette(PaletteType::InformationScreenPalette);
+        self.graphics.fade_to_palette(palette);
+
+        self.wait_for_key_press_or_mouse_click();
+        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+
+        self.video
+            .borrow_mut()
+            .set_screen_pixels(screen_pixel_backup);
+
+        let palette = self.graphics.get_palette(PaletteType::GamePalette);
+        self.graphics.fade_to_palette(palette);
     }
     fn handle_gfx_tutor_option_click(&mut self) {
         log::info!("handle_gfx_tutor_option_click");
