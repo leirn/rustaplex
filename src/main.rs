@@ -16,12 +16,40 @@
 */
 
 mod game;
+use clap::Parser;
 use game::Game;
 use log::info;
 use std::env;
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Log level. Can be any value within debug, info, warn, error, critical, none
+    #[arg(short, long)]
+    loglevel: Option<String>,
+    // TODO : add custom level file
+}
+
 fn main() {
-    env::set_var("RUST_LOG", "debug");
+    let args = Args::parse();
+
+    let loglevel = match args.loglevel {
+        Some(level) => {
+            if level != String::from("debug")
+                && level != String::from("info")
+                && level != String::from("warn")
+                && level != String::from("error")
+                && level != String::from("critical")
+            {
+                String::from("debug")
+            } else {
+                level
+            }
+        }
+        None => String::from("debug"),
+    };
+
+    env::set_var("RUST_LOG", loglevel);
     env_logger::init();
 
     info!("Start Rustaplex 0.1");
