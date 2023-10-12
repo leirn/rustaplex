@@ -1080,7 +1080,7 @@ impl Game<'_> {
             if self.mouse.button_status == MOUSE_BUTTON_RIGHT
             // Right button -> exit game
             {
-                println!("Right click");
+                log::debug!("Right click");
                 self.g_should_exit_game = true;
                 break;
             } //else if self.keyboard.gIsEscapeKeyPressed
@@ -1099,7 +1099,7 @@ impl Game<'_> {
             }
 
             if self.mouse.button_status == MOUSE_BUTTON_LEFT {
-                println!("Left click : x = {}, y = {}", self.mouse.x, self.mouse.y);
+                log::debug!("Left click : x = {}, y = {}", self.mouse.x, self.mouse.y);
                 self.g_automatic_demo_playback_countdown = 4200;
 
                 for i in 0..K_NUMBER_OF_MAIN_MENU_BUTTONS {
@@ -1111,7 +1111,7 @@ impl Game<'_> {
                         && self.mouse.x <= button_descriptor.end_x
                         && self.mouse.y <= button_descriptor.end_y
                     {
-                        println!("Button find !");
+                        log::debug!("Button find !");
 
                         (button_descriptor.callback)(self);
                         break;
@@ -1542,7 +1542,7 @@ impl Game<'_> {
     }
 
     fn handle_new_player_option_click(&mut self) {
-        println!("handle_new_player_option_click");
+        log::info!("handle_new_player_option_click");
 
         if self.g_is_forced_cheat_mode {
             self.draw_text_with_chars6_font_with_opaque_background_if_possible(
@@ -1738,46 +1738,46 @@ impl Game<'_> {
     }
 
     fn handle_delete_player_option_click(&mut self) {
-        println!("handle_delete_player_option_click");
+        log::info!("handle_delete_player_option_click");
     }
     fn handle_skip_level_option_click(&mut self) {
-        println!("handle_skip_level_option_click");
+        log::info!("handle_skip_level_option_click");
     }
     fn handle_statistics_option_click(&mut self) {
-        println!("handle_statistics_option_click");
+        log::info!("handle_statistics_option_click");
     }
     fn handle_gfx_tutor_option_click(&mut self) {
-        println!("handle_gfx_tutor_option_click");
+        log::info!("handle_gfx_tutor_option_click");
     }
     fn handle_demo_option_click(&mut self) {
-        println!("handle_demo_option_click");
+        log::info!("handle_demo_option_click");
     }
     fn handle_controls_option_click(&mut self) {
-        println!("handle_controls_option_click");
+        log::info!("handle_controls_option_click");
     }
     fn handle_ranking_list_scroll_up(&mut self) {
-        println!("handle_ranking_list_scroll_up");
+        log::info!("handle_ranking_list_scroll_up");
     }
     fn handle_ranking_list_scroll_down(&mut self) {
-        println!("handle_ranking_list_scroll_down");
+        log::info!("handle_ranking_list_scroll_down");
     }
     fn handle_ok_button_click(&mut self) {
-        println!("handle_ok_button_click");
+        log::info!("handle_ok_button_click");
     }
     fn handle_floppy_disk_button_click(&mut self) {
-        println!("handle_floppy_disk_button_click");
+        log::info!("handle_floppy_disk_button_click");
     }
     fn handle_player_list_scroll_up(&mut self) {
-        println!("handle_player_list_scroll_up");
+        log::info!("handle_player_list_scroll_up");
     }
     fn handle_player_list_scroll_down(&mut self) {
-        println!("handle_player_list_scroll_down");
+        log::info!("handle_player_list_scroll_down");
     }
     fn handle_player_list_click(&mut self) {
-        println!("handle_player_list_click");
+        log::info!("handle_player_list_click");
     }
     fn handle_level_list_scroll_up(&mut self) {
-        println!("handle_level_list_scroll_up");
+        log::info!("handle_level_list_scroll_up");
 
         self.button_states.g_level_list_button_pressed = true;
         self.button_states.g_level_list_down_button_pressed = false;
@@ -1805,7 +1805,7 @@ impl Game<'_> {
     }
 
     fn handle_level_list_scroll_down(&mut self) {
-        println!("handle_level_list_scroll_down");
+        log::info!("handle_level_list_scroll_down");
         self.button_states.g_level_list_button_pressed = true;
         self.button_states.g_level_list_down_button_pressed = true;
         self.button_states.g_level_list_up_button_pressed = false;
@@ -1832,7 +1832,7 @@ impl Game<'_> {
     }
 
     fn handle_level_credits_click(&mut self) {
-        println!("handle_level_credits_click");
+        log::info!("handle_level_credits_click");
 
         self.graphics.fade_to_palette(G_BLACK_PALETTE);
 

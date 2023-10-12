@@ -18,8 +18,12 @@
 mod game;
 use game::Game;
 use log::info;
+use std::env;
 
 fn main() {
+    env::set_var("RUST_LOG", "debug");
+    env_logger::init();
+
     info!("Start Rustaplex 0.1");
 
     let mut game = Game::new();
