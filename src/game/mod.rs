@@ -69,6 +69,7 @@ pub struct Game<'a> {
     g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
     g_is_game_busy: bool,
+    g_is_debug_mode_enabled: bool,
     is_joystick_enabled: bool,
     demo_manager: DemoManager,
     states: GameStates,
@@ -125,6 +126,7 @@ impl Game<'_> {
             g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
                 .map(|_| HallOfFameEntry::new()),
             g_is_game_busy: false,
+            g_is_debug_mode_enabled: false,
             is_joystick_enabled: false,
             demo_manager: DemoManager::new(),
             states: GameStates::new(),
@@ -401,7 +403,7 @@ impl Game<'_> {
             self.demo_manager.g_demos.demo_data[demo_first_index as usize] as u16;
         let mut final_level_number = demo_index;
 
-        if demo_level_number <= K_NUMBER_OF_LEVEL as u16 && demo_level_number != 0 {
+        if demo_level_number <= K_NUMBER_OF_LEVELS as u16 && demo_level_number != 0 {
             final_level_number = demo_level_number;
             self.demo_manager.g_selected_original_demo_level_number =
                 (self.demo_manager.g_selected_original_demo_level_number & 0xFF00)
@@ -466,7 +468,7 @@ impl Game<'_> {
 
         let mut file_data = [0_u8; K_LEVEL_DATA_LENGTH];
 
-        for i in 0..K_NUMBER_OF_LEVEL {
+        for i in 0..K_NUMBER_OF_LEVELS {
             let seek_offset = i * K_LEVEL_DATA_LENGTH;
             file.seek(SeekFrom::Start(seek_offset as u64)).expect(
                 format!(
@@ -756,25 +758,23 @@ impl Game<'_> {
         // Sets everything to 6 which seems to mean all levels are blocked
         self.states.g_current_player_padded_level_data =
             [K_SKIPPED_LEVEL_ENTRY_COLOR; K_NUMBER_OF_LEVEL_WITH_PADDING];
-        for i in 0..K_NUMBER_OF_LEVEL {
+        for i in 0..K_NUMBER_OF_LEVELS {
             self.states
                 .set_g_current_player_level_data(i, K_BLOCKED_LEVEL_ENTRY_COLOR);
         }
 
         let mut is_first_uncompleted_level = true;
 
-        for i in 0..K_NUMBER_OF_LEVEL {
-            if current_player_entry.level_state[i] == PlayerLevelState::PlayerLevelStateSkipped {
+        for i in 0..K_NUMBER_OF_LEVELS {
+            if current_player_entry.level_state[i] == PlayerLevelState::Skipped {
                 self.states
                     .set_g_current_player_level_data(i, K_SKIPPED_LEVEL_ENTRY_COLOR);
-            } else if current_player_entry.level_state[i]
-                == PlayerLevelState::PlayerLevelStateCompleted
+            } else if current_player_entry.level_state[i] == PlayerLevelState::Completed
             // Completed levels
             {
                 self.states
                     .set_g_current_player_level_data(i, K_COMPLETED_LEVEL_ENTRY_COLOR);
-            } else if current_player_entry.level_state[i]
-                == PlayerLevelState::PlayerLevelStateNotCompleted
+            } else if current_player_entry.level_state[i] == PlayerLevelState::NotCompleted
             // Levels not completed
             {
                 if is_first_uncompleted_level {
@@ -794,8 +794,8 @@ impl Game<'_> {
         let mut next_level_to_play: u8 = 1;
 
         // Looks for the first uncompleted level
-        for i in 0..K_NUMBER_OF_LEVEL {
-            if current_player_entry.level_state[i] == PlayerLevelState::PlayerLevelStateNotCompleted
+        for i in 0..K_NUMBER_OF_LEVELS {
+            if current_player_entry.level_state[i] == PlayerLevelState::NotCompleted
             // not completed
             {
                 has_completed_all_levels = false;
@@ -809,9 +809,8 @@ impl Game<'_> {
             next_level_to_play = 1;
 
             // Looks for the first completed level
-            for i in 0..K_NUMBER_OF_LEVEL {
-                if current_player_entry.level_state[i] == PlayerLevelState::PlayerLevelStateSkipped
-                {
+            for i in 0..K_NUMBER_OF_LEVELS {
+                if current_player_entry.level_state[i] == PlayerLevelState::Skipped {
                     has_completed_all_levels = false;
                     break;
                 }
@@ -1809,7 +1808,111 @@ impl Game<'_> {
 
     fn handle_skip_level_option_click(&mut self) {
         log::info!("handle_skip_level_option_click");
+        // 01ED:419C
+        let current_player_entry =
+            self.g_player_list_data[self.states.g_current_player_index].clone();
+
+        if current_player_entry.name == "--------" {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                "NO PLAYER SELECTED     ".to_string(),
+            );
+            return;
+        }
+
+        let mut number_of_skipped_levels = 0;
+
+        for i in 0..K_NUMBER_OF_LEVELS {
+            if current_player_entry.level_state[i] == PlayerLevelState::Skipped {
+                number_of_skipped_levels += 1;
+            }
+        }
+
+        if self.g_is_debug_mode_enabled == false {
+            if number_of_skipped_levels >= 3 {
+                self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                    168,
+                    127,
+                    6,
+                    "SKIP NOT POSSIBLE      ".to_string(),
+                );
+                return;
+            }
+        }
+
+        if self
+            .states
+            .get_g_current_player_level_data(self.states.g_current_player_index)
+            != K_NOT_COMPLETED_LEVEL_ENTRY_COLOR
+        {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                4,
+                "COLORBLIND I GUESS     ".to_string(),
+            );
+            return;
+        }
+
+        let message = format!(
+            "SKIP LEVEL {:03} ???     ",
+            self.states.g_current_selected_level_index
+        );
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(168, 127, 8, message);
+
+        loop {
+            let mouse_status = self.get_mouse_status();
+            if mouse_status.button_status != 0 {
+                break;
+            }
+        }
+
+        let mut mouse_x;
+        let mut mouse_y;
+
+        loop {
+            self.graphics.video_loop();
+            let mouse_status = self.get_mouse_status();
+            mouse_x = mouse_status.x;
+            mouse_y = mouse_status.y;
+            if mouse_status.button_status != 0 {
+                break;
+            }
+        }
+
+        let ok_button_descriptor = &K_MAIN_MENU_BUTTON_DESCRIPTORS[9];
+
+        if mouse_x >= ok_button_descriptor.start_x
+            && mouse_y >= ok_button_descriptor.start_y
+            && mouse_x <= ok_button_descriptor.end_x
+            && mouse_y <= ok_button_descriptor.end_y
+        {
+            self.states.g_current_player_level_state = PlayerLevelState::Skipped;
+            self.change_player_current_level_state();
+            self.g_should_autoselect_next_level_to_play = false;
+            self.prepare_level_data_for_current_player();
+        }
+
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            168,
+            127,
+            8,
+            "                       ".to_string(),
+        );
+        self.draw_player_list();
+        self.draw_level_list();
+        self.draw_rankings();
+
+        loop {
+            let mouse_status = self.get_mouse_status();
+            if mouse_status.button_status != 0 {
+                break;
+            }
+        }
     }
+
     fn handle_statistics_option_click(&mut self) {
         log::info!("handle_statistics_option_click");
     }
@@ -2109,6 +2212,92 @@ impl Game<'_> {
         for i in 0..K_NUMBER_OF_HALL_OF_FAME_ENTRIES {
             file.write_all(&self.g_hall_of_fame_data[i].to_raw())
                 .expect(format!("Error while writing to {}", G_HALL_OF_FAME_LST_FILENAME).as_str());
+        }
+    }
+
+    fn change_player_current_level_state(&mut self) {
+        if self.g_is_playing_demo {
+            return;
+        }
+        if self.g_has_user_cheated {
+            return;
+        }
+        let previous_state = self.states.g_current_player_level_state;
+        self.states.g_current_player_level_state = PlayerLevelState::NotCompleted;
+
+        self.g_player_list_data[self.states.g_current_player_index].level_state
+            [self.states.g_current_selected_level_index as usize] = previous_state;
+
+        self.states.g_current_selected_level_index += 1;
+        self.update_hall_of_fame_entries(); // 01ED:6618
+
+        // Added by me to prevent losing progress when switching levelsets after finishing a level
+        self.save_player_list_data();
+        self.save_hall_of_fame_data();
+    }
+
+    fn update_hall_of_fame_entries(&mut self) {
+        if self.g_is_playing_demo {
+            return;
+        }
+
+        let current_player_entry =
+            self.g_player_list_data[self.states.g_current_player_index].clone();
+        if current_player_entry.completed_all_levels != 0 {
+            return;
+        }
+
+        let mut number_of_completed_levels = 0;
+
+        for i in 0..K_NUMBER_OF_LEVELS {
+            if current_player_entry.level_state[i] == PlayerLevelState::Completed {
+                number_of_completed_levels += 1;
+            }
+        }
+
+        if (number_of_completed_levels != K_NUMBER_OF_LEVELS) {
+            return;
+        }
+
+        self.g_player_list_data[self.states.g_current_player_index].completed_all_levels = 1;
+
+        let mut new_entry_insert_index = -1_i32;
+        for i in 0..K_NUMBER_OF_HALL_OF_FAME_ENTRIES as i32 {
+            let entry = self.g_hall_of_fame_data[i as usize].clone();
+
+            if entry.hours == 0 && entry.minutes == 0 && entry.seconds == 0 {
+                new_entry_insert_index = i;
+                break;
+            }
+
+            if current_player_entry.hours < entry.hours {
+                new_entry_insert_index = i;
+                break;
+            } else if current_player_entry.hours == entry.hours {
+                if current_player_entry.minutes < entry.minutes {
+                    new_entry_insert_index = i;
+                    break;
+                } else if current_player_entry.minutes == entry.minutes {
+                    if current_player_entry.seconds < entry.seconds {
+                        new_entry_insert_index = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if new_entry_insert_index != -1 {
+            // Shift the list to the right to make room for the new entry
+            self.g_hall_of_fame_data[2] = self.g_hall_of_fame_data[1].clone();
+            self.g_hall_of_fame_data[1] = self.g_hall_of_fame_data[0].clone();
+
+            // Copy the player info into the new entry
+            let mut new_entry = HallOfFameEntry::new();
+            new_entry.hours = current_player_entry.hours;
+            new_entry.minutes = current_player_entry.minutes;
+            new_entry.seconds = current_player_entry.seconds;
+
+            self.g_hall_of_fame_data[new_entry_insert_index as usize] = new_entry;
         }
     }
 }

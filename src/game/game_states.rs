@@ -86,7 +86,7 @@ impl GameStates {
             g_game_hours: 0,
             g_should_update_total_level_time: 0,
             g_level_failed: false,
-            g_current_player_level_state: PlayerLevelState::PlayerLevelStateNotCompleted,
+            g_current_player_level_state: PlayerLevelState::NotCompleted,
             g_is_explosion_started: false,
             g_should_show_game_panel: false,
             g_toggle_game_panel_key_auto_repeat_counter: 0,

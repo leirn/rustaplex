@@ -83,7 +83,6 @@ impl Level {
     pub fn from_raw(level_index: usize, raw_data: [u8; K_LEVEL_DATA_LENGTH]) -> Level {
         // TODO : fix type and data size issue
         let mut level = Level::new();
-        let mut offset = 0;
 
         const OFFSET_TILES: usize = 0;
         const OFFSET_UNUSED: usize = OFFSET_TILES + K_LEVEL_SIZE;
@@ -155,7 +154,7 @@ impl Level {
         );
 
         for i in 0..K_LEVEL_SIZE {
-            level.tiles[i] = raw_data[offset + i];
+            level.tiles[i] = raw_data[i];
         }
 
         for i in 0..4 {

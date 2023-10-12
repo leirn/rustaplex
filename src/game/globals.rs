@@ -27,14 +27,14 @@ pub const K_LEVEL_WIDTH: usize = 60;
 pub const K_LEVEL_HEIGHT: usize = 24;
 pub const K_LEVEL_SIZE: usize = K_LEVEL_WIDTH * K_LEVEL_HEIGHT;
 
-pub const K_NUMBER_OF_LEVEL: usize = 111;
-pub const K_NUMBER_OF_LEVEL_WITH_PADDING: usize = K_NUMBER_OF_LEVEL + 5;
+pub const K_NUMBER_OF_LEVELS: usize = 111;
+pub const K_NUMBER_OF_LEVEL_WITH_PADDING: usize = K_NUMBER_OF_LEVELS + 5;
 pub const K_FIRST_LEVEL_INDEX: usize = 2;
-pub const K_LAST_LEVEL_INDEX: usize = K_FIRST_LEVEL_INDEX + K_NUMBER_OF_LEVEL;
+pub const K_LAST_LEVEL_INDEX: usize = K_FIRST_LEVEL_INDEX + K_NUMBER_OF_LEVELS;
 pub const K_LIST_LEVEL_NAME_LENGTH: usize = 28; // In the list of levels, every level is 28 bytes long and looks like "001
 pub const K_LEVEL_NAME_LENGTH: usize = 24;
 
-pub const K_LEVEL_LIST_DATA_LENGTH: usize = K_NUMBER_OF_LEVEL * K_LIST_LEVEL_NAME_LENGTH;
+pub const K_LEVEL_LIST_DATA_LENGTH: usize = K_NUMBER_OF_LEVELS * K_LIST_LEVEL_NAME_LENGTH;
 
 pub const K_CONFIG_DATA_LENGTH: usize = 4;
 
@@ -116,9 +116,9 @@ pub enum LevelTileType {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum PlayerLevelState {
-    PlayerLevelStateNotCompleted = 0,
-    PlayerLevelStateCompleted = 1,
-    PlayerLevelStateSkipped = 2,
+    NotCompleted = 0,
+    Completed = 1,
+    Skipped = 2,
 }
 
 impl TryFrom<u8> for PlayerLevelState {
@@ -126,9 +126,9 @@ impl TryFrom<u8> for PlayerLevelState {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(PlayerLevelState::PlayerLevelStateNotCompleted),
-            1 => Ok(PlayerLevelState::PlayerLevelStateCompleted),
-            2 => Ok(PlayerLevelState::PlayerLevelStateSkipped),
+            0 => Ok(PlayerLevelState::NotCompleted),
+            1 => Ok(PlayerLevelState::Completed),
+            2 => Ok(PlayerLevelState::Skipped),
             _ => Err("PlayerLevelState : Unknown value"),
         }
     }
@@ -145,7 +145,7 @@ pub struct PlayerEntry {
     pub hours: u8,
     pub minutes: u8,
     pub seconds: u8,
-    pub level_state: [PlayerLevelState; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+    pub level_state: [PlayerLevelState; K_NUMBER_OF_LEVELS], // values are PlayerLevelState
     pub unknown1: u8,
     pub unknown2: u8,
     pub unknown3: u8,
@@ -160,7 +160,7 @@ impl PlayerEntry {
             hours: 0,
             minutes: 0,
             seconds: 0,
-            level_state: [PlayerLevelState::PlayerLevelStateNotCompleted; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+            level_state: [PlayerLevelState::NotCompleted; K_NUMBER_OF_LEVELS], // values are PlayerLevelState
             unknown1: 0,
             unknown2: 0,
             unknown3: 0,
@@ -175,16 +175,16 @@ impl PlayerEntry {
             hours: player_data[K_PLAYER_NAME_LENGTH + 1],
             minutes: player_data[K_PLAYER_NAME_LENGTH + 2],
             seconds: player_data[K_PLAYER_NAME_LENGTH + 3],
-            level_state: [PlayerLevelState::PlayerLevelStateNotCompleted; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+            level_state: [PlayerLevelState::NotCompleted; K_NUMBER_OF_LEVELS], // values are PlayerLevelState
 
-            unknown1: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 4],
-            unknown2: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 5],
-            unknown3: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 6],
-            next_level_to_play: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 7],
-            completed_all_levels: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 8], // Still not 100% sure
+            unknown1: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 4],
+            unknown2: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 5],
+            unknown3: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 6],
+            next_level_to_play: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 7],
+            completed_all_levels: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 8], // Still not 100% sure
         };
 
-        for j in 0..K_NUMBER_OF_LEVEL {
+        for j in 0..K_NUMBER_OF_LEVELS {
             pe.level_state[j] = player_data[K_PLAYER_NAME_LENGTH + 4 + j]
                 .try_into()
                 .unwrap();
@@ -207,14 +207,14 @@ impl PlayerEntry {
         raw_data[K_PLAYER_NAME_LENGTH + 1] = self.hours;
         raw_data[K_PLAYER_NAME_LENGTH + 2] = self.minutes;
         raw_data[K_PLAYER_NAME_LENGTH + 3] = self.seconds;
-        for i in 0..K_NUMBER_OF_LEVEL {
+        for i in 0..K_NUMBER_OF_LEVELS {
             raw_data[K_PLAYER_NAME_LENGTH + 4 + i] = self.level_state[i] as u8;
         }
-        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 4] = self.unknown1;
-        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 5] = self.unknown2;
-        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 6] = self.unknown3;
-        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 7] = self.next_level_to_play;
-        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 8] = self.completed_all_levels;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 4] = self.unknown1;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 5] = self.unknown2;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 6] = self.unknown3;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 7] = self.next_level_to_play;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVELS + 8] = self.completed_all_levels;
         raw_data
     }
 }
@@ -263,7 +263,7 @@ impl HallOfFameEntry {
     }
 }
 
-pub const K_PLAYER_ENTRY_SIZE: usize = K_PLAYER_NAME_LENGTH + 1 + 3 + K_NUMBER_OF_LEVEL + 5;
+pub const K_PLAYER_ENTRY_SIZE: usize = K_PLAYER_NAME_LENGTH + 1 + 3 + K_NUMBER_OF_LEVELS + 5;
 pub const K_HALL_OF_FAME_ENTRY_SIZE: usize = K_PLAYER_NAME_LENGTH + 1 + 3;
 pub const K_PLAYER_NAME_LENGTH: usize = 8;
 pub const K_NUMBER_OF_PLAYERS: usize = 20;
