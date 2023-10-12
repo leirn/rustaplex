@@ -1,9 +1,6 @@
 use std::ops::AddAssign;
 
-use sdl2::{
-    keyboard::{PressedScancodeIterator, Scancode},
-    sys::SDL_Scancode,
-};
+use sdl2::keyboard::{PressedScancodeIterator, Scancode};
 
 #[derive(Clone, Default)]
 pub struct Keys {
@@ -74,75 +71,6 @@ pub struct Keys {
 }
 
 impl Keys {
-    pub fn new() -> Keys {
-        Keys {
-            g_is_up_key_pressed: false,
-            g_is_down_key_pressed: false,
-            g_is_left_key_pressed: false,
-            g_is_right_key_pressed: false,
-            g_is_insert_key_pressed: false,
-            g_is_end_key_pressed: false,
-            g_is_av_page_key_pressed: false,
-            g_is_re_page_key_pressed: false,
-            g_is_numpad_5_key_pressed: false,
-            g_is_home_key_pressed: false,
-            g_is_del_key_pressed: false,
-            g_is_numpad_divide_pressed: false,
-            g_is_numpad_multiply_pressed: false,
-            g_is_numpad_plus_pressed: false,
-            g_is_numpad_minus_pressed: false,
-            g_is_num_lock_pressed: false,
-            g_is_scroll_lock_pressed: false,
-            g_is_q_key_pressed: false,
-            g_is_w_key_pressed: false,
-            g_is_r_key_pressed: false,
-            g_is_p_key_pressed: false,
-            g_is_s_key_pressed: false,
-            g_is_d_key_pressed: false,
-            g_is_h_key_pressed: false,
-            g_is_j_key_pressed: false,
-            g_is_l_key_pressed: false,
-            g_is_z_key_pressed: false,
-            g_is_x_key_pressed: false,
-            g_is_c_key_pressed: false,
-            g_is_b_key_pressed: false,
-            g_is_m_key_pressed: false,
-            g_is_1_key_pressed: false,
-            g_is_2_key_pressed: false,
-            g_is_3_key_pressed: false,
-            g_is_4_key_pressed: false,
-            g_is_5_key_pressed: false,
-            g_is_6_key_pressed: false,
-            g_is_7_key_pressed: false,
-            g_is_8_key_pressed: false,
-            g_is_9_key_pressed: false,
-            g_is_0_key_pressed: false,
-            g_is_f1_key_pressed: false,
-            g_is_f2_key_pressed: false,
-            g_is_f3_key_pressed: false,
-            g_is_f4_key_pressed: false,
-            g_is_f5_key_pressed: false,
-            g_is_f6_key_pressed: false,
-            g_is_f7_key_pressed: false,
-            g_is_f8_key_pressed: false,
-            g_is_f9_key_pressed: false,
-            g_is_f10_key_pressed: false,
-            g_is_f11_key_pressed: false,
-            g_is_f12_key_pressed: false,
-            g_is_minus_key_pressed: false,
-            g_is_equals_key_pressed: false,
-            g_is_escape_key_pressed: false,
-            g_is_space_key_pressed: false,
-            g_is_enter_key_pressed: false,
-            g_is_left_control_key_pressed: false,
-            g_is_left_alt_pressed: false,
-            g_is_left_shift_pressed: false,
-            g_is_right_shift_pressed: false,
-            g_current_user_input: UserInput::UserInputNone,
-            g_key_pressed: None,
-        }
-    }
-
     fn reset_pressed_keys(&mut self) {
         self.g_is_up_key_pressed = false;
         self.g_is_down_key_pressed = false;
