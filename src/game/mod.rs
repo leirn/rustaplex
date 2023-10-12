@@ -1743,7 +1743,70 @@ impl Game<'_> {
 
     fn handle_delete_player_option_click(&mut self) {
         log::info!("handle_delete_player_option_click");
+        if self.g_is_forced_cheat_mode {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                "NO PLAYER SELECTED     ".to_string(),
+            );
+            return;
+        }
+
+        let current_player_name = self.g_player_list_data[self.states.g_current_player_index]
+            .name
+            .clone();
+        if current_player_name == "--------".to_string() {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                "NO PLAYER SELECTED     ".to_string(),
+            );
+            return;
+        }
+
+        let message = format!("DELETE '{}' ???  ", current_player_name);
+
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(168, 127, 8, message);
+
+        let mut mouse_x = 0;
+        let mut mouse_y = 0;
+
+        loop {
+            self.graphics.video_loop();
+            let mouse_status = self.get_mouse_status();
+            mouse_x = mouse_status.x;
+            mouse_y = mouse_status.y;
+            if mouse_status.button_status != 0 {
+                break;
+            }
+        }
+        let ok_button_descriptor = &K_MAIN_MENU_BUTTON_DESCRIPTORS[9];
+
+        if mouse_x >= ok_button_descriptor.start_x
+            && mouse_y >= ok_button_descriptor.start_y
+            && mouse_x <= ok_button_descriptor.end_x
+            && mouse_y <= ok_button_descriptor.end_y
+        {
+            self.g_player_list_data[self.states.g_current_player_index] = PlayerEntry::new();
+        }
+
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            168,
+            127,
+            8,
+            "                       ".to_string(),
+        );
+        self.save_player_list_data();
+        self.save_hall_of_fame_data();
+        self.g_should_autoselect_next_level_to_play = true;
+        self.prepare_level_data_for_current_player();
+        self.draw_player_list();
+        self.draw_level_list();
+        self.draw_rankings();
     }
+
     fn handle_skip_level_option_click(&mut self) {
         log::info!("handle_skip_level_option_click");
     }
