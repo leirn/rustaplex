@@ -46,12 +46,12 @@ use mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
 use sdl2::event::{Event, WindowEvent};
 use sdl2::keyboard::Keycode;
 use sdl2::keyboard::Scancode;
-use sdl2::sys::SDL_EventType;
+use sdl2::sys::{SDL_EventType, SDL_Scancode};
 use sdl2::EventPump;
 use sounds::Sounds;
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::rc::Rc;
 use std::thread::sleep;
@@ -75,6 +75,7 @@ pub struct Game<'a> {
     g_has_user_cheated: bool,
     g_should_autoselect_next_level_to_play: bool,
     g_is_forced_level: u8,
+    g_is_forced_cheat_mode: bool,
     g_is_playing_demo: bool,
     g_sp_demo_file_name: String,
     g_should_start_from_saved_snapshot: bool,
@@ -130,6 +131,7 @@ impl Game<'_> {
             g_has_user_cheated: false,
             g_should_autoselect_next_level_to_play: false,
             g_is_forced_level: 0,
+            g_is_forced_cheat_mode: false,
             g_is_playing_demo: false,
             g_sp_demo_file_name: String::new(),
             g_should_start_from_saved_snapshot: false,
@@ -170,6 +172,8 @@ impl Game<'_> {
         // readAdvancedConfig(); --> TODO : what is the use ?
 
         // handleSystemEvent(); --> SDL Quit event handling. Will be manage later in the loop, no use so early in the game
+
+        log::info!("Starting game engine");
 
         self.init_game_state_data();
 
@@ -218,6 +222,8 @@ impl Game<'_> {
     }
 
     fn run(&mut self) {
+        log::info!("Starting game main loop");
+
         let mut should_quit_the_game = false;
         let mut level_number_forced_to_load = 0_u8;
         while !should_quit_the_game {
@@ -320,12 +326,8 @@ impl Game<'_> {
 
             for event in self.events.poll_iter() {
                 match event {
-                    Event::Quit { .. }
-                    | Event::KeyDown {
-                        keycode: Some(Keycode::Q),
-                        ..
-                    } => should_quit_the_game = true,
-                    Event::KeyUp {
+                    Event::Quit { .. } => should_quit_the_game = true,
+                    /*Event::KeyUp {
                         keycode: Some(Keycode::F),
                         ..
                     } => self.video.borrow_mut().toggle_fullscreen(),
@@ -335,7 +337,7 @@ impl Game<'_> {
                             println!("Window resized Event received");
                             self.video.borrow_mut().update_window_viewport();
                         }
-                    }
+                    }*/
                     _ => (),
                 }
             }
@@ -1541,7 +1543,200 @@ impl Game<'_> {
 
     fn handle_new_player_option_click(&mut self) {
         println!("handle_new_player_option_click");
+
+        if self.g_is_forced_cheat_mode {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                6,
+                String::from("PLAYER LIST FULL       "),
+            );
+            return;
+        }
+
+        let mut new_player_index: i32 = -1;
+
+        for i in 0..K_NUMBER_OF_PLAYERS {
+            let current_player_entry = self.g_player_list_data[i].clone();
+
+            if current_player_entry.name.eq("--------") {
+                new_player_index = i as i32;
+                break;
+            }
+        }
+
+        if new_player_index == -1 {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                6,
+                String::from("PLAYER LIST FULL       "),
+            );
+            return;
+        }
+        self.states.g_new_player_entry_index = new_player_index as usize;
+        let mut new_player_name = String::from("        ");
+        self.states.g_new_player_name_length = 0;
+        //let  mouse_status = self.get_mouse_status();
+
+        //restoreLastMouseAreaBitmap();
+
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            168,
+            127,
+            4,
+            String::from("YOUR NAME:             "),
+        );
+
+        loop {
+            let mouse_status = self.get_mouse_status();
+            if mouse_status.button_status != 0 {
+                break;
+            }
+        }
+        let mut last_pressed_character = '\0';
+
+        loop {
+            self.graphics.video_loop();
+
+            //int9handler(0);
+            let mouse_status = self.get_mouse_status();
+            if mouse_status.button_status != 0 {
+                break;
+            }
+            self.update_keyboard_state();
+            {
+                let is_any_key_pressed = self.keyboard.is_any_key_pressed();
+                if is_any_key_pressed == false {
+                    last_pressed_character = '\0';
+                    continue;
+                }
+            }
+            let character = self.keyboard.character_for_last_key_pressed();
+
+            if last_pressed_character == character {
+                continue;
+            }
+
+            last_pressed_character = character;
+
+            if character == '\0'
+            // For keys without a valid representation
+            {
+                continue;
+            }
+            if character == '\n'
+            // \n -> enter -> create player
+            {
+                break;
+            }
+            if character == '%'
+            // backspace -> delete last char
+            {
+                if self.states.g_new_player_name_length == 0 {
+                    continue;
+                }
+                self.states.g_new_player_name_length -= 1;
+                let range_start = self.states.g_new_player_name_length as usize;
+                new_player_name.replace_range(range_start..(range_start + 1), " ");
+                self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                    232,
+                    127,
+                    6,
+                    new_player_name.clone(),
+                );
+                continue;
+            }
+            if self.states.g_new_player_name_length >= 8
+            // when more than 8 chars were entered, ignore the rest?
+            {
+                continue;
+            }
+            let range_start = self.states.g_new_player_name_length as usize;
+            new_player_name.replace_range(
+                range_start..(range_start + 1),
+                String::from(character).as_str(),
+            );
+            self.states.g_new_player_name_length += 1;
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                232,
+                127,
+                6,
+                new_player_name.clone(),
+            );
+        }
+
+        loop {
+            let mouse_status = self.get_mouse_status();
+            if mouse_status.button_status != 0 {
+                break;
+            }
+        }
+
+        // Completely empty name: ignore
+        if new_player_name == "        " {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                String::from("                       "),
+            );
+            //saveLastMouseAreaBitmap();
+            //drawMouseCursor();
+            return;
+        }
+
+        if new_player_name == "--------" {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                6,
+                String::from("INVALID NAME           "),
+            );
+            //saveLastMouseAreaBitmap();
+            //drawMouseCursor();
+            return;
+        }
+
+        // Move spaces at the end of the name to the beginning
+        let trimmed_player_name = new_player_name.trim();
+        let space_quantity = K_PLAYER_NAME_LENGTH - trimmed_player_name.len();
+        let new_player_name = String::from(" ").repeat(space_quantity) + new_player_name.as_str();
+
+        for i in 0..K_NUMBER_OF_PLAYERS {
+            if self.g_player_list_data[i].name == new_player_name {
+                self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                    168,
+                    127,
+                    6,
+                    String::from("PLAYER EXISTS          "),
+                );
+                //saveLastMouseAreaBitmap();
+                //drawMouseCursor();
+                return;
+            }
+        }
+
+        self.states.g_current_player_index = self.states.g_new_player_entry_index;
+        self.g_player_list_data[self.states.g_current_player_index].name = new_player_name;
+
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            168,
+            127,
+            8,
+            String::from("                       "),
+        );
+        self.save_player_list_data();
+        self.save_hall_of_fame_data();
+        self.g_should_autoselect_next_level_to_play = true;
+        self.prepare_level_data_for_current_player();
+        self.draw_player_list();
+        self.draw_level_list();
+        self.draw_rankings();
+        //saveLastMouseAreaBitmap();
+        //drawMouseCursor();
     }
+
     fn handle_delete_player_option_click(&mut self) {
         println!("handle_delete_player_option_click");
     }
@@ -1715,6 +1910,12 @@ impl Game<'_> {
         // TODO : implement function
     }
 
+    fn update_keyboard_state(&mut self) {
+        let kb_state = self.events.keyboard_state();
+        let keys = kb_state.pressed_scancodes();
+        self.keyboard.update_keyboard_state(keys);
+    }
+
     fn update_user_input(&mut self) {
         let mut direction_key_was_pressed = 0;
 
@@ -1808,6 +2009,39 @@ impl Game<'_> {
             x,
             y,
             button_status: right_button_pressed << 1 | left_button_pressed,
+        }
+    }
+
+    fn save_player_list_data(&mut self) {
+        if self.g_is_forced_cheat_mode {
+            return;
+        }
+
+        let path = format!("{}/{}", RESSOURCES_PATH, G_PLAYERS_LST_FILENAME);
+        let player_lst_file_path = Path::new(&path);
+        let mut file = File::create(player_lst_file_path)
+            .expect(format!("Error while opening {}", G_PLAYERS_LST_FILENAME).as_str());
+
+        for i in 0..K_NUMBER_OF_PLAYERS {
+            file.write_all(&self.g_player_list_data[i].to_raw())
+                .expect(format!("Error while writing to {}", G_PLAYERS_LST_FILENAME).as_str());
+        }
+    }
+
+    fn save_hall_of_fame_data(&mut self) {
+        if self.g_is_forced_cheat_mode {
+            return;
+        }
+
+        let path = format!("{}/{}", RESSOURCES_PATH, G_HALL_OF_FAME_LST_FILENAME);
+        let hof_lst_file_path = Path::new(&path);
+
+        let mut file = File::create(hof_lst_file_path)
+            .expect(format!("Error while opening {}", G_HALL_OF_FAME_LST_FILENAME).as_str());
+
+        for i in 0..K_NUMBER_OF_HALL_OF_FAME_ENTRIES {
+            file.write_all(&self.g_hall_of_fame_data[i].to_raw())
+                .expect(format!("Error while writing to {}", G_HALL_OF_FAME_LST_FILENAME).as_str());
         }
     }
 }

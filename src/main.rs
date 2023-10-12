@@ -17,8 +17,11 @@
 
 mod game;
 use game::Game;
+use log::info;
 
 fn main() {
+    info!("Start Rustaplex 0.1");
+
     let mut game = Game::new();
     game.start();
 }

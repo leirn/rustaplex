@@ -64,6 +64,8 @@ pub struct GameStates {
     pub g_current_level_name: String,
     pub g_is_level_started_as_demo: bool,
     pub g_has_user_cheated: bool,
+    pub g_new_player_entry_index: usize,
+    pub g_new_player_name_length: u8,
 }
 
 impl GameStates {
@@ -130,6 +132,9 @@ impl GameStates {
             g_current_level_name: String::new(),
             g_is_level_started_as_demo: false,
             g_has_user_cheated: false,
+
+            g_new_player_entry_index: 0,
+            g_new_player_name_length: 0,
         }
     }
 

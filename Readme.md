@@ -9,3 +9,10 @@ It is freely and largely inspired but the great work within [open-supaplex](http
 ## Licence
 
 This software is distributed under licence GPL V3.
+
+## Known limitations
+
+The development is currently ongoing and the game is not playable yet.
+Nevertheless, some limitation will remain for version 1:
+
+- Rustaplex 0.1 will only support real keyboard and will not support touch screen, unlike open-supaplex. This feature may be added in a later version. We are currently focusing of having a functional game.

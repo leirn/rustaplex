@@ -139,6 +139,7 @@ pub const K_COMPLETED_LEVEL_ENTRY_COLOR: u8 = 4;
 pub const K_BLOCKED_LEVEL_ENTRY_COLOR: u8 = 6;
 pub const K_SKIPPED_LEVEL_ENTRY_COLOR: u8 = 8;
 
+#[derive(Clone)]
 pub struct PlayerEntry {
     pub name: String,
     pub hours: u8,
@@ -170,21 +171,12 @@ impl PlayerEntry {
 
     pub fn from(player_data: [u8; K_PLAYER_ENTRY_SIZE]) -> PlayerEntry {
         let mut pe = PlayerEntry {
-            name: format!(
-                "{}{}{}{}{}{}{}{}",
-                player_data[0],
-                player_data[1],
-                player_data[2],
-                player_data[3],
-                player_data[4],
-                player_data[5],
-                player_data[6],
-                player_data[7]
-            ), // Default player name
+            name: String::from_utf8_lossy(&player_data[0..K_PLAYER_NAME_LENGTH]).to_string(), // Default player name
             hours: player_data[K_PLAYER_NAME_LENGTH + 1],
             minutes: player_data[K_PLAYER_NAME_LENGTH + 2],
             seconds: player_data[K_PLAYER_NAME_LENGTH + 3],
             level_state: [PlayerLevelState::PlayerLevelStateNotCompleted; K_NUMBER_OF_LEVEL], // values are PlayerLevelState
+
             unknown1: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 4],
             unknown2: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 5],
             unknown3: player_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 6],
@@ -199,6 +191,31 @@ impl PlayerEntry {
         }
 
         pe
+    }
+
+    pub fn to_raw(&self) -> [u8; K_PLAYER_ENTRY_SIZE] {
+        let mut raw_data = [0_u8; K_PLAYER_ENTRY_SIZE];
+
+        let name = self.name.as_bytes();
+        for i in 0..name.len() {
+            if i >= K_PLAYER_NAME_LENGTH {
+                break;
+            }
+            raw_data[i] = name[i];
+        }
+
+        raw_data[K_PLAYER_NAME_LENGTH + 1] = self.hours;
+        raw_data[K_PLAYER_NAME_LENGTH + 2] = self.minutes;
+        raw_data[K_PLAYER_NAME_LENGTH + 3] = self.seconds;
+        for i in 0..K_NUMBER_OF_LEVEL {
+            raw_data[K_PLAYER_NAME_LENGTH + 4 + i] = self.level_state[i] as u8;
+        }
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 4] = self.unknown1;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 5] = self.unknown2;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 6] = self.unknown3;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 7] = self.next_level_to_play;
+        raw_data[K_PLAYER_NAME_LENGTH + K_NUMBER_OF_LEVEL + 8] = self.completed_all_levels;
+        raw_data
     }
 }
 
@@ -222,21 +239,27 @@ impl HallOfFameEntry {
 
     pub fn from(player_data: [u8; K_HALL_OF_FAME_ENTRY_SIZE]) -> HallOfFameEntry {
         HallOfFameEntry {
-            player_name: format!(
-                "{}{}{}{}{}{}{}{}",
-                player_data[0],
-                player_data[1],
-                player_data[2],
-                player_data[3],
-                player_data[4],
-                player_data[5],
-                player_data[6],
-                player_data[7]
-            ),
+            player_name: String::from_utf8_lossy(&player_data[0..K_PLAYER_NAME_LENGTH]).to_string(),
             hours: player_data[K_PLAYER_NAME_LENGTH + 1],
             minutes: player_data[K_PLAYER_NAME_LENGTH + 2],
             seconds: player_data[K_PLAYER_NAME_LENGTH + 3],
         }
+    }
+
+    pub fn to_raw(&mut self) -> [u8; K_HALL_OF_FAME_ENTRY_SIZE] {
+        let mut raw_data = [0; K_HALL_OF_FAME_ENTRY_SIZE];
+
+        let name = self.player_name.as_bytes();
+        for i in 0..name.len() {
+            if i >= K_PLAYER_NAME_LENGTH {
+                break;
+            }
+            raw_data[i] = name[i];
+        }
+        raw_data[K_PLAYER_NAME_LENGTH + 1] = self.hours;
+        raw_data[K_PLAYER_NAME_LENGTH + 2] = self.minutes;
+        raw_data[K_PLAYER_NAME_LENGTH + 3] = self.seconds;
+        raw_data
     }
 }
 
