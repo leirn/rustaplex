@@ -105,7 +105,7 @@ pub struct Game<'a> {
     byte_58D46: u8,
     byte_59B83: bool,
     byte_50919: u8,
-    word_58463: u16,
+    should_quit_option_menu: bool, // word_58463 in open-supaplex
     g_level_failed: bool,
     button_states: ButtonStatus,
     keyboard: Rc<RefCell<Keys>>,
@@ -159,7 +159,7 @@ impl Game<'_> {
             word_58467: true,
             byte_5A19B: false,
             byte_50919: 0,
-            word_58463: 0,
+            should_quit_option_menu: false,
             g_is_main_menu: false,
             g_has_user_interrupted_demo: false,
             g_selected_original_demo_level_number: 0,
@@ -2206,7 +2206,7 @@ impl Game<'_> {
 
         self.graphics.set_palette(PaletteType::ControlsPalette);
         self.scroll_right_to_new_screen();
-        self.word_58463 = 0;
+        self.should_quit_option_menu = false;
 
         loop {
             self.graphics.video_loop(); // 01ED:5E04
@@ -2222,7 +2222,7 @@ impl Game<'_> {
             {
                 break;
             }
-            if self.word_58463 == 1 {
+            if self.should_quit_option_menu == true {
                 break;
             }
             if mouse_status.button_status == MOUSE_BUTTON_LEFT {
@@ -2290,6 +2290,7 @@ impl Game<'_> {
     }
     fn handle_options_exit_area_click(&mut self) {
         log::info!("handle_options_exit_area_click");
+        self.should_quit_option_menu = true;
     }
     fn handle_ranking_list_scroll_up(&mut self) {
         log::info!("handle_ranking_list_scroll_up");
