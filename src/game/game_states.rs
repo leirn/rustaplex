@@ -127,7 +127,7 @@ impl GameStates {
             g_current_player_index: 0,
 
             g_current_player_padded_level_data: [0; K_NUMBER_OF_LEVEL_WITH_PADDING],
-            g_current_selected_level_index: 0,
+            g_current_selected_level_index: 1,
             g_player_name: String::new(),
             g_current_level_name: String::new(),
             g_is_level_started_as_demo: false,

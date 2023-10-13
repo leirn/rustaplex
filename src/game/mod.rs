@@ -102,7 +102,7 @@ pub struct Game<'a> {
     g_should_exit_game: bool,
     g_ranking_text_entries: [String; K_NUMBER_OF_PLAYERS + 4],
     byte_58D47: u8,
-    byte_58D46: u8,
+    current_ranking_index: u8, // byte_58D46
     byte_59B83: bool,
     byte_50919: u8,
     should_quit_option_menu: bool, // word_58463 in open-supaplex
@@ -167,7 +167,7 @@ impl Game<'_> {
             g_should_exit_game: false,
             g_ranking_text_entries: [(); K_NUMBER_OF_PLAYERS + 4].map(|_| String::new()),
             byte_58D47: 0,
-            byte_58D46: 0,
+            current_ranking_index: 0,
             byte_59B83: false,
             g_level_failed: false,
             button_states: ButtonStatus::default(),
@@ -943,7 +943,7 @@ impl Game<'_> {
             [K_FIRST_LEVEL_INDEX + self.states.g_current_selected_level_index as usize];
 
         let previous_level_name = match self.states.g_current_selected_level_index {
-            0 | 1 => String::new(),
+            0 | 1 => String::from(" ").repeat(27),
             _ => self.g_level_list_data[self.states.g_current_selected_level_index as usize - 2]
                 .name
                 .clone(),
@@ -956,7 +956,7 @@ impl Game<'_> {
         );
 
         self.states.g_current_level_name = match self.states.g_current_selected_level_index {
-            0 => String::new(),
+            0 => String::from(" ").repeat(27),
             _ => self.g_level_list_data[self.states.g_current_selected_level_index as usize - 1]
                 .name
                 .clone(),
@@ -1228,15 +1228,17 @@ impl Game<'_> {
                 8,
                 y as usize,
                 color,
-                self.g_ranking_text_entries[self.byte_58D46 as usize + i as usize].clone(),
+                self.g_ranking_text_entries[self.current_ranking_index as usize + i as usize]
+                    .clone(),
             );
         }
 
+        // Display current ranking index in right box
         self.draw_text_with_chars6_font_with_opaque_background_if_possible(
             144,
             110,
             6,
-            format!("{:02}", self.byte_58D46),
+            format!("{:02}", self.current_ranking_index),
         );
     }
 
@@ -1285,13 +1287,18 @@ impl Game<'_> {
             }
         }
 
-        for i in 0..20 {
+        for i in 0..K_NUMBER_OF_PLAYERS {
             if ranking_entries[i].player_index == self.states.g_current_player_index as u8 {
                 self.byte_58D47 = i as u8;
             }
         }
 
-        for i in 0..20 {
+        self.g_ranking_text_entries[0] = String::from(" ").repeat(22);
+        self.g_ranking_text_entries[1] = String::from(" ").repeat(22);
+        self.g_ranking_text_entries[K_NUMBER_OF_PLAYERS + 2] = String::from(" ").repeat(22);
+        self.g_ranking_text_entries[K_NUMBER_OF_PLAYERS + 3] = String::from(" ").repeat(22);
+
+        for i in 0..K_NUMBER_OF_PLAYERS {
             self.g_ranking_text_entries[i + 2] = format!(
                 "{} {:indent$} {:03}:{:02}:{:02}",
                 if ranking_entries[i].next_level_to_play == 0x71 {
@@ -2360,8 +2367,8 @@ impl Game<'_> {
             self.g_ranking_list_throttle_current_counter -= 1;
         }
 
-        if self.g_is_forced_cheat_mode == false && self.byte_58D46 > 0 {
-            self.byte_58D46 -= 1;
+        if self.g_is_forced_cheat_mode == false && self.current_ranking_index > 0 {
+            self.current_ranking_index -= 1;
         }
 
         self.draw_rankings();
@@ -2384,8 +2391,10 @@ impl Game<'_> {
             self.g_ranking_list_throttle_current_counter -= 1;
         }
 
-        if self.g_is_forced_cheat_mode == false && self.byte_58D46 < K_NUMBER_OF_PLAYERS as u8 - 1 {
-            self.byte_58D46 += 1;
+        if self.g_is_forced_cheat_mode == false
+            && self.current_ranking_index < K_NUMBER_OF_PLAYERS as u8 - 1
+        {
+            self.current_ranking_index += 1;
         }
 
         self.draw_rankings();
