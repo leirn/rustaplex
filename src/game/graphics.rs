@@ -38,6 +38,7 @@ pub struct Graphics<'a> {
     g_panel_decoded_bitmap_data: Box<[u8; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH]>,
     g_panel_rendered_bitmap_data: Box<[u8; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH]>,
     g_title2_decoded_bitmap_data: Box<[u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]>,
+    pub g_scroll_destination_screen_bitmap_data: Box<[u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]>,
     g_palettes: Box<[ColorPalette; K_NUMBER_OF_PALETTES]>,
     g_current_palette: ColorPalette,
     g_should_show_fps: bool,
@@ -74,6 +75,9 @@ impl Graphics<'_> {
             ),
             g_panel_rendered_bitmap_data: Box::new(
                 [0; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH],
+            ),
+            g_scroll_destination_screen_bitmap_data: Box::new(
+                [0; K_FULL_SCREEN_FRAMEBUFFER_LENGTH],
             ),
             g_title2_decoded_bitmap_data: Box::new([0; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]),
             g_palettes: Box::new([G_BLACK_PALETTE; K_NUMBER_OF_PALETTES]),
@@ -992,6 +996,10 @@ impl Graphics<'_> {
                         .video
                         .borrow_mut()
                         .set_pixel(dest_pixel_address, final_color),
+                    DestinationSurface::Scroll => {
+                        self.g_scroll_destination_screen_bitmap_data[dest_pixel_address] =
+                            final_color
+                    }
                 }
             }
         }
@@ -1029,10 +1037,15 @@ impl Graphics<'_> {
         //saveLastMouseAreaBitmap();
         //drawMouseCursor();
     }
+
+    pub fn draw_gfx_tutor_background(&mut self, dest: DestinationSurface) {
+        self.draw_full_screen_bitmap(BitmapType::Gfx, dest);
+    }
 }
 
-enum DestinationSurface {
+pub enum DestinationSurface {
     Screen,
+    Scroll,
 }
 
 enum BitmapType {

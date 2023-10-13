@@ -28,6 +28,8 @@ mod sounds;
 mod utils;
 pub mod video;
 
+use crate::game::graphics::DestinationSurface;
+
 use self::graphics::{G_BLACK_PALETTE, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
 use self::level::Level;
 use button_borders::{
@@ -1428,6 +1430,55 @@ impl Game<'_> {
         //saveLastMouseAreaBitmap();
     }
 
+    fn scroll_right_to_new_screen(&mut self) {
+        self.graphics.video_loop();
+
+        let screen_pixel_backup = self.video.borrow().get_screen_pixels();
+
+        const NUMBER_OF_STEPS: u32 = 80;
+
+        const ANIMATION_DURATION: u32 = NUMBER_OF_STEPS * 1000 / 70; // ~571 ms
+        let mut animation_time = 0_u32;
+
+        self.graphics.start_tracking_tender_delta_time();
+
+        // Draws the current scroll animation step
+        while animation_time < ANIMATION_DURATION {
+            animation_time += self.graphics.update_render_delta_time();
+            animation_time = std::cmp::min(animation_time, ANIMATION_DURATION);
+
+            let animation_factor = animation_time as f64 / ANIMATION_DURATION as f64;
+
+            let limit_from_right = animation_factor * K_SCREEN_WIDTH as f64;
+            let limit_from_left = K_SCREEN_WIDTH as f64 - limit_from_right;
+            let limit_from_right = limit_from_right as usize;
+            let limit_from_left = limit_from_left as usize;
+
+            for y in 0..K_SCREEN_HEIGHT {
+                // Main menu side
+                for x in 0..(K_SCREEN_WIDTH - limit_from_right) {
+                    let color = screen_pixel_backup[y * K_SCREEN_WIDTH + x + limit_from_right];
+                    self.graphics
+                        .video
+                        .borrow_mut()
+                        .set_pixel(y * K_SCREEN_WIDTH + x, color);
+                }
+
+                // GFX background side
+                for x in limit_from_left..K_SCREEN_WIDTH {
+                    let color = self.graphics.g_scroll_destination_screen_bitmap_data
+                        [y * K_SCREEN_WIDTH + x - limit_from_left];
+                    self.graphics
+                        .video
+                        .borrow_mut()
+                        .set_pixel(y * K_SCREEN_WIDTH + x, color);
+                }
+            }
+
+            self.graphics.video_loop();
+        }
+    }
+
     fn draw_main_menum_button_borders(&mut self) {
         let mut color = 0;
 
@@ -2061,7 +2112,8 @@ impl Game<'_> {
     }
     fn handle_gfx_tutor_option_click(&mut self) {
         log::info!("handle_gfx_tutor_option_click");
-        self.draw_gfx_tutor_background(gScrollDestinationScreenBitmapData);
+        self.graphics
+            .draw_gfx_tutor_background(DestinationSurface::Scroll);
         self.scroll_right_to_new_screen();
         self.wait_for_key_press_or_mouse_click();
         self.scroll_left_to_main_menu();
@@ -2403,7 +2455,7 @@ impl Game<'_> {
             }
         }
 
-        if (number_of_completed_levels != K_NUMBER_OF_LEVELS) {
+        if number_of_completed_levels != K_NUMBER_OF_LEVELS {
             return;
         }
 
