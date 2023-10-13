@@ -2,16 +2,16 @@
 pub struct GameController {}
 
 impl GameController {
-    pub fn get_game_controller_y(&mut self) -> u8 {
+    pub fn get_game_controller_y(&mut self) -> i32 {
         0
     }
-    pub fn get_game_controller_x(&mut self) -> u8 {
+    pub fn get_game_controller_x(&mut self) -> i32 {
         0
     }
-    pub fn get_game_controller_a(&mut self) -> u8 {
+    pub fn get_game_controller_a(&mut self) -> i32 {
         0
     }
-    pub fn get_game_controller_b(&mut self) -> u8 {
+    pub fn get_game_controller_b(&mut self) -> i32 {
         0
     }
     pub fn get_game_controller_button_a(&mut self) -> bool {
