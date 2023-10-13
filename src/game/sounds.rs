@@ -268,7 +268,19 @@ impl Sounds<'_> {
         self.play_sound_effect(SoundEffect::Exit);
     }
 
-    fn set_sound_type(&mut self, music_type: SoundType, effects_type: SoundType) {}
+    fn set_sound_type(&mut self, music_type: SoundType, effects_type: SoundType) {
+        if self.g_is_audio_initialized == false {
+            return;
+        }
+        self.destroy_music();
+        self.destroy_sounds();
+
+        self.snd_type = effects_type;
+        self.mus_type = music_type;
+
+        self.load_music();
+        self.load_sounds();
+    }
 
     fn play_sound_effect(&mut self, effects_type: SoundEffect) {}
 
@@ -297,6 +309,16 @@ impl Sounds<'_> {
         //self.g_music = chunk.ok();
     }
 
+    fn destroy_music(&mut self) {
+        self.stop_music();
+        /*         if (gMusic != NULL)
+        {
+            Mix_FreeMusic(gMusic);
+        }
+
+        gMusic = NULL;*/
+    }
+
     fn load_sounds(&mut self) {
         if self.g_is_audio_initialized == false {
             return;
@@ -318,6 +340,16 @@ impl Sounds<'_> {
             let chunk = sdl2::rwops::RWops::from_file(filename, "r").unwrap();
             let chunk = chunk.load_wav().unwrap();
             self.g_sound_effect_chunks[i] = Some(chunk);
+        }
+    }
+
+    fn destroy_sounds(&mut self) {
+        for i in 0..SOUND_EFFECT_COUNT {
+            /*if (gSoundEffectChunks[i] != NULL)
+            {
+                Mix_FreeChunk(gSoundEffectChunks[i]);
+            }
+            gSoundEffectChunks[i] = NULL;*/
         }
     }
 }

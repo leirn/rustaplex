@@ -2257,36 +2257,86 @@ impl Game<'_> {
 
     fn handle_options_adlib_click(&mut self) {
         log::info!("handle_options_adlib_click");
+        log::info!("handle_options_combined_click");
+        self.sounds.activate_adlib_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_sound_blaster_click(&mut self) {
         log::info!("handle_options_sound_blaster_click");
+        log::info!("handle_options_combined_click");
+        self.sounds.activate_sound_blaster_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_roland_click(&mut self) {
         log::info!("handle_options_roland_click");
+        log::info!("handle_options_combined_click");
+        self.sounds.activate_roland_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_combined_click(&mut self) {
         log::info!("handle_options_combined_click");
+        self.sounds.activate_combined_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_internal_click(&mut self) {
         log::info!("handle_options_internal_click");
+        log::info!("handle_options_combined_click");
+        self.sounds.activate_internal_standard_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_standard_click(&mut self) {
         log::info!("handle_options_standard_click");
+        log::info!("handle_options_combined_click");
+        self.sounds.activate_internal_standard_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_samples_click(&mut self) {
         log::info!("handle_options_samples_click");
+        log::info!("handle_options_combined_click");
+        self.sounds.activate_internal_samples_sound();
+        self.sounds.play_explosion_sound();
+        self.draw_sound_type_options_selection(DestinationSurface::Screen);
     }
+
     fn handle_options_music_click(&mut self) {
         log::info!("handle_options_music_click");
+        if self.sounds.is_music_enabled {
+            self.sounds.is_music_enabled = false;
+            self.sounds.stop_music();
+        } else {
+            self.sounds.is_music_enabled = true;
+            self.sounds.play_music_if_needed();
+        }
+        self.draw_audio_options_selection(DestinationSurface::Screen);
     }
+
     fn handle_options_fx_click(&mut self) {
         log::info!("handle_options_fx_click");
+        if self.sounds.is_fx_enabled {
+            self.sounds.is_fx_enabled = false;
+        } else {
+            self.sounds.is_fx_enabled = true;
+            self.sounds.play_explosion_sound();
+        }
+        self.draw_audio_options_selection(DestinationSurface::Screen);
     }
+
     fn handle_options_keyboard_click(&mut self) {
         log::info!("handle_options_keyboard_click");
+        self.is_joystick_enabled = false;
+        self.draw_input_options_selection(DestinationSurface::Screen);
     }
+
     fn handle_options_joystick_click(&mut self) {
         log::info!("handle_options_joystick_click");
+        self.is_joystick_enabled = true;
+        self.draw_input_options_selection(DestinationSurface::Screen);
     }
     fn handle_options_exit_area_click(&mut self) {
         log::info!("handle_options_exit_area_click");
@@ -2695,9 +2745,7 @@ impl Game<'_> {
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[0], 6, dest_buffer);
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[1], 6, dest_buffer);
             return;
-        }
-
-        if self.sounds.snd_type == SoundType::SoundBlaster {
+        } else if self.sounds.snd_type == SoundType::SoundBlaster {
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[3], 6, dest_buffer);
 
             if self.sounds.mus_type == SoundType::Adlib {
@@ -2710,9 +2758,7 @@ impl Game<'_> {
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[4], 6, dest_buffer);
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[6], 6, dest_buffer);
             return;
-        }
-
-        if self.sounds.snd_type == SoundType::Roland {
+        } else if self.sounds.snd_type == SoundType::Roland {
             self.highlight_options_button_text(32, 93, 56, 8, dest_buffer);
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[4], 6, dest_buffer);
             self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[5], 6, dest_buffer);
