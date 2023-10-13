@@ -2342,12 +2342,55 @@ impl Game<'_> {
         log::info!("handle_options_exit_area_click");
         self.should_quit_option_menu = true;
     }
+
     fn handle_ranking_list_scroll_up(&mut self) {
         log::info!("handle_ranking_list_scroll_up");
+        self.button_states.g_ranking_list_button_pressed = true;
+        self.button_states.g_ranking_list_down_button_pressed = false;
+        self.button_states.g_ranking_list_up_button_pressed = true;
+
+        if self.states.g_frame_counter - self.g_ranking_list_throttle_current_counter
+            < self.g_ranking_list_throttle_next_counter
+        {
+            return;
+        }
+
+        self.g_ranking_list_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_ranking_list_throttle_current_counter > 1 {
+            self.g_ranking_list_throttle_current_counter -= 1;
+        }
+
+        if self.g_is_forced_cheat_mode == false && self.byte_58D46 > 0 {
+            self.byte_58D46 -= 1;
+        }
+
+        self.draw_rankings();
     }
+
     fn handle_ranking_list_scroll_down(&mut self) {
         log::info!("handle_ranking_list_scroll_down");
+        self.button_states.g_ranking_list_button_pressed = true;
+        self.button_states.g_ranking_list_down_button_pressed = true;
+        self.button_states.g_ranking_list_up_button_pressed = false;
+
+        if self.states.g_frame_counter - self.g_ranking_list_throttle_current_counter
+            < self.g_ranking_list_throttle_next_counter
+        {
+            return;
+        }
+
+        self.g_ranking_list_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_ranking_list_throttle_current_counter > 1 {
+            self.g_ranking_list_throttle_current_counter -= 1;
+        }
+
+        if self.g_is_forced_cheat_mode == false && self.byte_58D46 < K_NUMBER_OF_PLAYERS as u8 - 1 {
+            self.byte_58D46 += 1;
+        }
+
+        self.draw_rankings();
     }
+
     fn handle_ok_button_click(&mut self) {
         log::info!("handle_ok_button_click");
     }
