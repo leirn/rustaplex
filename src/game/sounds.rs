@@ -46,24 +46,25 @@ const K_AUDIO_BUFFER_SIZE: u32 = 512;
 const K_SAMPLE_RATE: u32 = 44100;
 const K_NUMBER_OF_CHANNELS: u32 = 2;
 
-enum SoundType {
-    SoundTypeNone = 0,
-    SoundTypeInternalStandard = 1,
-    SoundTypeInternalSamples = 2,
-    SoundTypeAdlib = 3,
-    SoundTypeSoundBlaster = 4,
-    SoundTypeRoland = 5,
+#[derive(PartialEq)]
+pub enum SoundType {
+    None = 0,
+    InternalStandard = 1,
+    InternalSamples = 2,
+    Adlib = 3,
+    SoundBlaster = 4,
+    Roland = 5,
 }
 
-enum SoundEffect {
-    SoundEffectExplosion,
-    SoundEffectInfotron,
-    SoundEffectPush,
-    SoundEffectFall,
-    SoundEffectBug,
-    SoundEffectBase,
-    SoundEffectExit,
-    SoundEffectCount,
+pub enum SoundEffect {
+    Explosion,
+    Infotron,
+    Push,
+    Fall,
+    Bug,
+    Base,
+    Exit,
+    Count,
 }
 
 pub struct Sounds<'a> {
@@ -72,8 +73,8 @@ pub struct Sounds<'a> {
     pub is_fx_enabled: bool,
     g_current_sound_priority: u8,
     g_current_sound_duration: u8,
-    snd_type: SoundType,
-    mus_type: SoundType,
+    pub snd_type: SoundType,
+    pub mus_type: SoundType,
     g_current_sound_channel: i32,
     g_is_audio_initialized: bool,
     g_music: Option<Music<'a>>,
@@ -90,8 +91,8 @@ impl Sounds<'_> {
             is_fx_enabled: false,
             g_current_sound_priority: 0,
             g_current_sound_duration: 0,
-            snd_type: SoundType::SoundTypeNone,
-            mus_type: SoundType::SoundTypeInternalStandard,
+            snd_type: SoundType::None,
+            mus_type: SoundType::InternalStandard,
             g_current_sound_channel: -1,
             g_is_audio_initialized: false,
             g_music: None,
@@ -107,10 +108,7 @@ impl Sounds<'_> {
 
     pub fn activate_internal_standard_sound(&mut self) {
         self.stop_music_and_sounds();
-        self.set_sound_type(
-            SoundType::SoundTypeInternalStandard,
-            SoundType::SoundTypeInternalStandard,
-        );
+        self.set_sound_type(SoundType::InternalStandard, SoundType::InternalStandard);
         self.play_music_if_needed();
         self.g_current_sound_priority = 0;
         self.g_current_sound_duration = 0;
@@ -118,10 +116,7 @@ impl Sounds<'_> {
 
     pub fn activate_internal_samples_sound(&mut self) {
         self.stop_music_and_sounds();
-        self.set_sound_type(
-            SoundType::SoundTypeInternalStandard,
-            SoundType::SoundTypeInternalSamples,
-        );
+        self.set_sound_type(SoundType::InternalStandard, SoundType::InternalSamples);
         self.play_music_if_needed();
         self.g_current_sound_priority = 0;
         self.g_current_sound_duration = 0;
@@ -129,7 +124,7 @@ impl Sounds<'_> {
 
     pub fn activate_adlib_sound(&mut self) {
         self.stop_music_and_sounds();
-        self.set_sound_type(SoundType::SoundTypeAdlib, SoundType::SoundTypeAdlib);
+        self.set_sound_type(SoundType::Adlib, SoundType::Adlib);
         self.play_music_if_needed();
         self.g_current_sound_priority = 0;
         self.g_current_sound_duration = 0;
@@ -137,7 +132,7 @@ impl Sounds<'_> {
 
     pub fn activate_sound_blaster_sound(&mut self) {
         self.stop_music_and_sounds();
-        self.set_sound_type(SoundType::SoundTypeAdlib, SoundType::SoundTypeSoundBlaster);
+        self.set_sound_type(SoundType::Adlib, SoundType::SoundBlaster);
         self.play_music_if_needed();
         self.g_current_sound_priority = 0;
         self.g_current_sound_duration = 0;
@@ -145,7 +140,7 @@ impl Sounds<'_> {
 
     pub fn activate_roland_sound(&mut self) {
         self.stop_music_and_sounds();
-        self.set_sound_type(SoundType::SoundTypeRoland, SoundType::SoundTypeRoland);
+        self.set_sound_type(SoundType::Roland, SoundType::Roland);
         self.play_music_if_needed();
         self.g_current_sound_priority = 0;
         self.g_current_sound_duration = 0;
@@ -153,14 +148,14 @@ impl Sounds<'_> {
 
     pub fn activate_combined_sound(&mut self) {
         self.stop_music_and_sounds();
-        self.set_sound_type(SoundType::SoundTypeRoland, SoundType::SoundTypeSoundBlaster);
+        self.set_sound_type(SoundType::Roland, SoundType::SoundBlaster);
         self.play_music_if_needed();
         self.g_current_sound_priority = 0;
         self.g_current_sound_duration = 0;
     }
 
     pub fn stop_music_and_sounds(&mut self) {
-        self.set_sound_type(SoundType::SoundTypeNone, SoundType::SoundTypeNone);
+        self.set_sound_type(SoundType::None, SoundType::None);
     }
 
     pub fn play_music_if_needed(&mut self) {
@@ -183,7 +178,7 @@ impl Sounds<'_> {
         self.g_current_sound_priority = 5;
         self.g_current_sound_duration = 0xf;
 
-        self.play_sound_effect(SoundEffect::SoundEffectExplosion);
+        self.play_sound_effect(SoundEffect::Explosion);
     }
 
     pub fn play_infotron_sound(&mut self) {
@@ -198,7 +193,7 @@ impl Sounds<'_> {
         self.g_current_sound_priority = 4;
         self.g_current_sound_duration = 0xf;
 
-        self.play_sound_effect(SoundEffect::SoundEffectInfotron);
+        self.play_sound_effect(SoundEffect::Infotron);
     }
 
     pub fn play_push_sound(&mut self) {
@@ -213,7 +208,7 @@ impl Sounds<'_> {
         self.g_current_sound_priority = 2;
         self.g_current_sound_duration = 7;
 
-        self.play_sound_effect(SoundEffect::SoundEffectPush);
+        self.play_sound_effect(SoundEffect::Push);
     }
 
     pub fn play_fall_sound(&mut self) {
@@ -228,7 +223,7 @@ impl Sounds<'_> {
         self.g_current_sound_priority = 2;
         self.g_current_sound_duration = 7;
 
-        self.play_sound_effect(SoundEffect::SoundEffectFall);
+        self.play_sound_effect(SoundEffect::Fall);
     }
 
     pub fn play_bug_sound(&mut self) {
@@ -243,7 +238,7 @@ impl Sounds<'_> {
         self.g_current_sound_priority = 3;
         self.g_current_sound_duration = 3;
 
-        self.play_sound_effect(SoundEffect::SoundEffectBug);
+        self.play_sound_effect(SoundEffect::Bug);
     }
 
     pub fn play_base_sound(&mut self) {
@@ -258,7 +253,7 @@ impl Sounds<'_> {
         self.g_current_sound_priority = 1;
         self.g_current_sound_duration = 3;
 
-        self.play_sound_effect(SoundEffect::SoundEffectBase);
+        self.play_sound_effect(SoundEffect::Base);
     }
 
     pub fn play_exit_sound(&mut self) {
@@ -270,7 +265,7 @@ impl Sounds<'_> {
         self.g_current_sound_duration = 0xfa;
         self.stop_music();
 
-        self.play_sound_effect(SoundEffect::SoundEffectExit);
+        self.play_sound_effect(SoundEffect::Exit);
     }
 
     fn set_sound_type(&mut self, music_type: SoundType, effects_type: SoundType) {}
@@ -287,14 +282,12 @@ impl Sounds<'_> {
         }
 
         let music_suffix = match self.mus_type {
-            SoundType::SoundTypeRoland => K_ROLAND_SOUND_FILENAME_SUFFIX,
-            SoundType::SoundTypeAdlib | SoundType::SoundTypeSoundBlaster => {
-                K_BLASTER_SOUND_FILENAME_SUFFIX
-            }
-            SoundType::SoundTypeInternalSamples | SoundType::SoundTypeInternalStandard => {
+            SoundType::Roland => K_ROLAND_SOUND_FILENAME_SUFFIX,
+            SoundType::Adlib | SoundType::SoundBlaster => K_BLASTER_SOUND_FILENAME_SUFFIX,
+            SoundType::InternalSamples | SoundType::InternalStandard => {
                 K_STANDARD_SOUND_FILENAME_SUFFIX
             }
-            SoundType::SoundTypeNone => return,
+            SoundType::None => return,
         };
 
         let filename = format!("{}/music-{}.xm", K_BASE_AUDIO_FOLDER, music_suffix);
@@ -310,13 +303,11 @@ impl Sounds<'_> {
         }
 
         let effects_suffix = match self.snd_type {
-            SoundType::SoundTypeRoland | SoundType::SoundTypeSoundBlaster => {
-                K_BLASTER_SOUND_FILENAME_SUFFIX
-            }
-            SoundType::SoundTypeAdlib => K_ADLIB_SOUND_FILENAME_SUFFIX,
-            SoundType::SoundTypeInternalSamples => K_SAMPLES_SOUND_FILENAME_SUFFIX,
-            SoundType::SoundTypeInternalStandard => K_STANDARD_SOUND_FILENAME_SUFFIX,
-            SoundType::SoundTypeNone => return,
+            SoundType::Roland | SoundType::SoundBlaster => K_BLASTER_SOUND_FILENAME_SUFFIX,
+            SoundType::Adlib => K_ADLIB_SOUND_FILENAME_SUFFIX,
+            SoundType::InternalSamples => K_SAMPLES_SOUND_FILENAME_SUFFIX,
+            SoundType::InternalStandard => K_STANDARD_SOUND_FILENAME_SUFFIX,
+            SoundType::None => return,
         };
 
         for i in 0..SOUND_EFFECT_COUNT {

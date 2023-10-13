@@ -19,8 +19,10 @@ pub mod animation;
 mod button_borders;
 mod demo;
 mod game_states;
+pub mod gamecontroller;
 pub mod globals;
 pub mod graphics;
+mod input;
 mod keyboard;
 pub mod level;
 mod mouse;
@@ -28,11 +30,19 @@ mod sounds;
 mod utils;
 pub mod video;
 
+use crate::game::button_borders::{
+    K_NUMBER_OF_OPTIONS_MENU_BUTTONS, K_OPTIONS_MENU_BUTTON_DESCRIPTORS,
+};
 use crate::game::demo::K_NUMBER_OF_DEMOS;
 use crate::game::graphics::DestinationSurface;
 
-use self::graphics::{G_BLACK_PALETTE, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use self::button_borders::{
+    ButtonBorderLineDescriptor, ButtonBorderLineType, K_OPTIONS_MENU_BORDERS,
+};
+use self::graphics::{K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use self::input::Input;
 use self::level::Level;
+use self::sounds::SoundType;
 use button_borders::{
     ButtonStatus, K_MAIN_MENU_BUTTON_BORDERS, K_MAIN_MENU_BUTTON_DESCRIPTORS,
     K_NUMBER_OF_MAIN_MENU_BUTTONS,
@@ -94,9 +104,12 @@ pub struct Game<'a> {
     byte_58D47: u8,
     byte_58D46: u8,
     byte_59B83: bool,
+    byte_50919: u8,
+    word_58463: u16,
     g_level_failed: bool,
     button_states: ButtonStatus,
-    keyboard: Keys,
+    keyboard: Rc<RefCell<Keys>>,
+    input: Input,
     mouse: Mouse,
     g_level_list_throttle_current_counter: u16,
     g_level_list_throttle_next_counter: u16,
@@ -114,6 +127,9 @@ impl Game<'_> {
         let video = Rc::new(RefCell::new(Video::init(sdl_context.clone())));
 
         let events = sdl_context.borrow_mut().event_pump().unwrap();
+
+        let keyboard = Rc::new(RefCell::new(Keys::default()));
+        let input = Input::new(keyboard.clone());
 
         Game {
             sounds: Sounds::new(sdl_context.clone()),
@@ -142,6 +158,8 @@ impl Game<'_> {
             g_should_start_from_saved_snapshot: false,
             word_58467: true,
             byte_5A19B: false,
+            byte_50919: 0,
+            word_58463: 0,
             g_is_main_menu: false,
             g_has_user_interrupted_demo: false,
             g_selected_original_demo_level_number: 0,
@@ -153,7 +171,8 @@ impl Game<'_> {
             byte_59B83: false,
             g_level_failed: false,
             button_states: ButtonStatus::default(),
-            keyboard: Keys::default(),
+            keyboard: keyboard,
+            input: input,
             g_level_list_throttle_current_counter: 0,
             g_level_list_throttle_next_counter: 0,
             g_player_list_throttle_current_counter: 0,
@@ -195,8 +214,7 @@ impl Game<'_> {
             // Display welcome grahpic
             self.graphics.video_loop();
             self.graphics.read_and_render_title_dat();
-            let title_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE_PALETTE_DATA);
-            self.graphics.fade_to_palette(title_dat_palette);
+            self.graphics.fade_to_palette(PaletteType::Title);
 
             // sleep a little to enjoy it
             for _ in 0..200 {
@@ -223,7 +241,7 @@ impl Game<'_> {
         self.wait_for_key_press_or_mouse_click();
 
         // Back in black
-        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+        self.graphics.fade_to_palette(PaletteType::Black);
     }
 
     fn run(&mut self) {
@@ -278,7 +296,7 @@ impl Game<'_> {
             }
             /* TODO later since only in second cycle
                         self.read_levels();
-                        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+                        self.graphics.fade_to_palette(PaletteType::Black);
                         self.g_is_game_busy = false;
                         self.draw_player_list();
                         self.initialize_game_info();
@@ -430,8 +448,7 @@ impl Game<'_> {
 
     fn load_screen_2(&mut self) {
         self.graphics.read_and_render_title1_dat();
-        let title1_dat_palette = Graphics::convert_palette_data_to_palette(G_TITLE1_PALETTE_DATA);
-        self.graphics.set_palette(title1_dat_palette);
+        self.graphics.set_palette(PaletteType::Title1);
         self.graphics.video_loop();
 
         self.graphics.read_title2_dat();
@@ -741,7 +758,7 @@ impl Game<'_> {
     }
 
     fn initialize_fade_palette(&mut self) {
-        self.graphics.set_palette(graphics::G_BLACK_PALETTE);
+        self.graphics.set_palette(PaletteType::Black);
     }
 
     fn start_directly_from_level(&mut self, level_number: u8) {
@@ -977,8 +994,7 @@ impl Game<'_> {
             self.draw_menu_title_and_demo_level_result();
 
             self.graphics.video_loop();
-            let palette = self.graphics.get_palette(PaletteType::GamePalette);
-            self.graphics.fade_to_palette(palette);
+            self.graphics.fade_to_palette(PaletteType::GamePalette);
             self.word_58467 = false;
         } else {
             self.byte_59B83 = true;
@@ -1039,38 +1055,39 @@ impl Game<'_> {
 
             self.button_states.g_level_list_down_button_pressed = false;
             self.button_states.g_level_list_up_button_pressed = false;
-            if self.keyboard.g_current_user_input as u8
+
+            if self.keyboard.borrow_mut().g_current_user_input as u8
                 > K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET as u8
-            // || isStartButtonPressed() TODO : handle game controller
+                || self.input.is_start_button_pressed()
             {
                 self.handle_ok_button_click();
-            } else if self.keyboard.g_is_f1_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f1_key_pressed {
                 self.play_demo(0);
-            } else if self.keyboard.g_is_f2_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f2_key_pressed {
                 self.play_demo(1);
-            } else if self.keyboard.g_is_f3_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f3_key_pressed {
                 self.play_demo(2);
-            } else if self.keyboard.g_is_f4_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f4_key_pressed {
                 self.play_demo(3);
-            } else if self.keyboard.g_is_f5_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f5_key_pressed {
                 self.play_demo(4);
-            } else if self.keyboard.g_is_f6_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f6_key_pressed {
                 self.play_demo(5);
-            } else if self.keyboard.g_is_f7_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f7_key_pressed {
                 self.play_demo(6);
-            } else if self.keyboard.g_is_f8_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f8_key_pressed {
                 self.play_demo(7);
-            } else if self.keyboard.g_is_f9_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f9_key_pressed {
                 self.play_demo(8);
-            } else if self.keyboard.g_is_f10_key_pressed {
+            } else if self.keyboard.borrow_mut().g_is_f10_key_pressed {
                 self.play_demo(9);
-            } else if self.keyboard.g_is_numpad_divide_pressed
+            } else if self.keyboard.borrow_mut().g_is_numpad_divide_pressed
                 && self.demo_manager.demo_file_name.len() != 0
                 && self.demo_manager.file_is_demo
             {
                 self.demo_manager.g_is_sp_demo_available_to_run = 1;
                 self.play_demo(0);
-            } else if self.keyboard.g_is_f12_key_pressed
+            } else if self.keyboard.borrow_mut().g_is_f12_key_pressed
                 && self.demo_manager.demo_file_name.len() != 0
             {
                 self.demo_manager.g_is_sp_demo_available_to_run = 1;
@@ -1301,8 +1318,7 @@ impl Game<'_> {
 
             self.prepare_level_data_for_current_player();
             self.draw_menu_title_and_demo_level_result();
-            let palette = self.graphics.get_palette(PaletteType::GamePalette);
-            self.graphics.fade_to_palette(palette);
+            self.graphics.fade_to_palette(PaletteType::GamePalette);
 
             self.graphics.video_loop();
 
@@ -1315,7 +1331,7 @@ impl Game<'_> {
     }
 
     fn draw_failed_level_result_screen(&mut self) {
-        self.graphics.set_palette(G_BLACK_PALETTE);
+        self.graphics.set_palette(PaletteType::Black);
         self.graphics.draw_back_background();
 
         self.draw_text_with_chars6_font_with_transparent_background_if_possible(
@@ -1366,21 +1382,19 @@ impl Game<'_> {
         );
 
         self.graphics.video_loop();
-        let palette = self
-            .graphics
-            .get_palette(PaletteType::InformationScreenPalette);
-        self.graphics.set_palette(palette);
+        self.graphics
+            .set_palette(PaletteType::InformationScreenPalette);
 
         if !self.g_should_exit_game {
             self.wait_for_key_press_or_mouse_click();
         }
 
-        self.graphics.set_palette(G_BLACK_PALETTE);
+        self.graphics.set_palette(PaletteType::Black);
     }
 
     fn scroll_left_to_main_menu(&mut self) {
-        let current_screen_pixels = self.graphics.video.borrow().get_screen_pixels();
-        let menu_screen_pixels = self.graphics.video.borrow().get_screen_pixels(); // Appel en double?
+        let current_screen_pixels = self.graphics.video.borrow_mut().get_screen_pixels();
+        let menu_screen_pixels = self.graphics.video.borrow_mut().get_screen_pixels(); // Appel en double?
 
         self.graphics.draw_menu_background();
         self.g_should_autoselect_next_level_to_play = false;
@@ -1388,7 +1402,7 @@ impl Game<'_> {
         self.prepare_level_data_for_current_player();
         self.draw_menu_title_and_demo_level_result();
 
-        let menu_screen_pixels = self.graphics.video.borrow().get_screen_pixels();
+        let menu_screen_pixels = self.graphics.video.borrow_mut().get_screen_pixels();
 
         const K_NUMBER_OF_STEPS: u32 = 80;
 
@@ -1440,7 +1454,7 @@ impl Game<'_> {
     fn scroll_right_to_new_screen(&mut self) {
         self.graphics.video_loop();
 
-        let screen_pixel_backup = self.video.borrow().get_screen_pixels();
+        let screen_pixel_backup = self.video.borrow_mut().get_screen_pixels();
 
         const NUMBER_OF_STEPS: u32 = 80;
 
@@ -1665,13 +1679,13 @@ impl Game<'_> {
             }
             self.update_keyboard_state();
             {
-                let is_any_key_pressed = self.keyboard.is_any_key_pressed();
+                let is_any_key_pressed = self.keyboard.borrow_mut().is_any_key_pressed();
                 if is_any_key_pressed == false {
                     last_pressed_character = '\0';
                     continue;
                 }
             }
-            let character = self.keyboard.character_for_last_key_pressed();
+            let character = self.keyboard.borrow_mut().character_for_last_key_pressed();
 
             if last_pressed_character == character {
                 continue;
@@ -1985,9 +1999,9 @@ impl Game<'_> {
             return;
         }
 
-        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+        self.graphics.fade_to_palette(PaletteType::Black);
 
-        let screen_pixel_backup = self.video.borrow().get_screen_pixels();
+        let screen_pixel_backup = self.video.borrow_mut().get_screen_pixels();
 
         self.graphics.draw_back_background();
 
@@ -2102,20 +2116,17 @@ impl Game<'_> {
             );
         }
 
-        let palette = self
-            .graphics
-            .get_palette(PaletteType::InformationScreenPalette);
-        self.graphics.fade_to_palette(palette);
+        self.graphics
+            .fade_to_palette(PaletteType::InformationScreenPalette);
 
         self.wait_for_key_press_or_mouse_click();
-        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+        self.graphics.fade_to_palette(PaletteType::Black);
 
         self.video
             .borrow_mut()
             .set_screen_pixels(screen_pixel_backup);
 
-        let palette = self.graphics.get_palette(PaletteType::GamePalette);
-        self.graphics.fade_to_palette(palette);
+        self.graphics.fade_to_palette(PaletteType::GamePalette);
     }
     fn handle_gfx_tutor_option_click(&mut self) {
         log::info!("handle_gfx_tutor_option_click");
@@ -2186,6 +2197,99 @@ impl Game<'_> {
 
     fn handle_controls_option_click(&mut self) {
         log::info!("handle_controls_option_click");
+        self.byte_50919 = 0xFF;
+        self.graphics
+            .draw_options_background(DestinationSurface::Scroll);
+        self.draw_sound_type_options_selection(DestinationSurface::Scroll);
+        self.draw_audio_options_selection(DestinationSurface::Scroll);
+        self.draw_input_options_selection(DestinationSurface::Scroll);
+
+        self.graphics.set_palette(PaletteType::ControlsPalette);
+        self.scroll_right_to_new_screen();
+        self.word_58463 = 0;
+
+        loop {
+            self.graphics.video_loop(); // 01ED:5E04
+            self.update_options_menu_state(DestinationSurface::Screen);
+            self.states.g_frame_counter += 1;
+            let mouse_status = self.get_mouse_status();
+
+            if mouse_status.button_status == MOUSE_BUTTON_RIGHT {
+                break;
+            }
+            if self.input.is_menu_back_button_pressed()
+            // Select/Back/- controller button -> go back
+            {
+                break;
+            }
+            if self.word_58463 == 1 {
+                break;
+            }
+            if mouse_status.button_status == MOUSE_BUTTON_LEFT {
+                for i in 0..K_NUMBER_OF_OPTIONS_MENU_BUTTONS {
+                    let button_descriptor = &K_OPTIONS_MENU_BUTTON_DESCRIPTORS[i];
+                    if mouse_status.x >= button_descriptor.start_x
+                        && mouse_status.y >= button_descriptor.start_y
+                        && mouse_status.x <= button_descriptor.end_x
+                        && mouse_status.y <= button_descriptor.end_y
+                    {
+                        log::debug!("Button find !");
+                        (button_descriptor.callback)(self);
+
+                        loop {
+                            self.graphics.video_loop();
+                            self.states.g_frame_counter += 1;
+                            let mouse_status = self.get_mouse_status();
+                            if mouse_status.button_status != 0 {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        self.save_configuration();
+        self.scroll_left_to_main_menu();
+        self.draw_menu_title_and_demo_level_result();
+        self.graphics.set_palette(PaletteType::GamePalette);
+    }
+
+    fn handle_options_adlib_click(&mut self) {
+        log::info!("handle_options_adlib_click");
+    }
+    fn handle_options_sound_blaster_click(&mut self) {
+        log::info!("handle_options_sound_blaster_click");
+    }
+    fn handle_options_roland_click(&mut self) {
+        log::info!("handle_options_roland_click");
+    }
+    fn handle_options_combined_click(&mut self) {
+        log::info!("handle_options_combined_click");
+    }
+    fn handle_options_internal_click(&mut self) {
+        log::info!("handle_options_internal_click");
+    }
+    fn handle_options_standard_click(&mut self) {
+        log::info!("handle_options_standard_click");
+    }
+    fn handle_options_samples_click(&mut self) {
+        log::info!("handle_options_samples_click");
+    }
+    fn handle_options_music_click(&mut self) {
+        log::info!("handle_options_music_click");
+    }
+    fn handle_options_fx_click(&mut self) {
+        log::info!("handle_options_fx_click");
+    }
+    fn handle_options_keyboard_click(&mut self) {
+        log::info!("handle_options_keyboard_click");
+    }
+    fn handle_options_joystick_click(&mut self) {
+        log::info!("handle_options_joystick_click");
+    }
+    fn handle_options_exit_area_click(&mut self) {
+        log::info!("handle_options_exit_area_click");
     }
     fn handle_ranking_list_scroll_up(&mut self) {
         log::info!("handle_ranking_list_scroll_up");
@@ -2266,9 +2370,9 @@ impl Game<'_> {
     fn handle_level_credits_click(&mut self) {
         log::info!("handle_level_credits_click");
 
-        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+        self.graphics.fade_to_palette(PaletteType::Black);
 
-        let screen_pixel_backup = self.video.borrow().get_screen_pixels();
+        let screen_pixel_backup = self.video.borrow_mut().get_screen_pixels();
 
         self.graphics.draw_back_background();
 
@@ -2321,21 +2425,18 @@ impl Game<'_> {
             String::from("(C) DIGITAL INTEGRATION LTD 1991"),
         );
 
-        let palette = self
-            .graphics
-            .get_palette(PaletteType::InformationScreenPalette);
-        self.graphics.fade_to_palette(palette);
+        self.graphics
+            .fade_to_palette(PaletteType::InformationScreenPalette);
 
         self.wait_for_key_press_or_mouse_click();
 
-        self.graphics.fade_to_palette(G_BLACK_PALETTE);
+        self.graphics.fade_to_palette(PaletteType::Black);
 
         self.video
             .borrow_mut()
             .set_screen_pixels(screen_pixel_backup);
 
-        let palette = self.graphics.get_palette(PaletteType::GamePalette);
-        self.graphics.fade_to_palette(palette);
+        self.graphics.fade_to_palette(PaletteType::GamePalette);
     }
 
     fn fun_level(&mut self) {
@@ -2345,39 +2446,40 @@ impl Game<'_> {
     fn update_keyboard_state(&mut self) {
         let kb_state = self.events.keyboard_state();
         let keys = kb_state.pressed_scancodes();
-        self.keyboard.update_keyboard_state(keys);
+        self.keyboard.borrow_mut().update_keyboard_state(keys);
     }
 
     fn update_user_input(&mut self) {
         let mut direction_key_was_pressed = 0;
 
-        self.keyboard.g_current_user_input = UserInput::None;
+        self.keyboard.borrow_mut().g_current_user_input = UserInput::None;
 
         if self.is_up_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::Up;
+            self.keyboard.borrow_mut().g_current_user_input = UserInput::Up;
             direction_key_was_pressed = 1;
         }
 
         if self.is_left_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::Left;
+            self.keyboard.borrow_mut().g_current_user_input = UserInput::Left;
             direction_key_was_pressed = 1;
         }
 
         if self.is_down_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::Down;
+            self.keyboard.borrow_mut().g_current_user_input = UserInput::Down;
             direction_key_was_pressed = 1;
         }
 
         if self.is_right_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::Right;
+            self.keyboard.borrow_mut().g_current_user_input = UserInput::Right;
             direction_key_was_pressed = 1;
         }
 
         if self.is_action_button_pressed() {
             if direction_key_was_pressed == 1 {
-                self.keyboard.g_current_user_input += K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET;
+                self.keyboard.borrow_mut().g_current_user_input +=
+                    K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET;
             } else {
-                self.keyboard.g_current_user_input = UserInput::SpaceOnly;
+                self.keyboard.borrow_mut().g_current_user_input = UserInput::SpaceOnly;
             }
         }
     }
@@ -2427,7 +2529,7 @@ impl Game<'_> {
         let left_button_pressed = mouse_state.left() as u8;
         let right_button_pressed = mouse_state.right() as u8;
 
-        let (window_width, window_height) = self.video.borrow().get_window_size();
+        let (window_width, window_height) = self.video.borrow_mut().get_window_size();
 
         if window_width != 0 && window_height != 0 {
             x = x * K_SCREEN_WIDTH as i32 / window_width as i32;
@@ -2561,5 +2663,284 @@ impl Game<'_> {
 
             self.g_hall_of_fame_data[new_entry_insert_index as usize] = new_entry;
         }
+    }
+
+    fn draw_sound_type_options_selection(&mut self, dest_buffer: DestinationSurface) {
+        self.dim_options_button_text(40, 21, 40, 8, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[0], 4, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[1], 4, dest_buffer);
+
+        self.dim_options_button_text(24, 57, 72, 8, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[2], 4, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[3], 4, dest_buffer);
+
+        self.dim_options_button_text(32, 93, 56, 8, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[4], 4, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[5], 4, dest_buffer);
+
+        self.dim_options_button_text(24, 129, 64, 8, dest_buffer);
+        self.dim_options_button_text(136, 18, 72, 8, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[7], 4, dest_buffer);
+
+        self.dim_options_button_text(128, 46, 40, 5, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[8], 4, dest_buffer);
+
+        self.dim_options_button_text(176, 46, 40, 5, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[9], 4, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[6], 4, dest_buffer);
+
+        if self.sounds.snd_type == SoundType::Adlib {
+            self.highlight_options_button_text(40, 21, 40, 8, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[0], 6, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[1], 6, dest_buffer);
+            return;
+        }
+
+        if self.sounds.snd_type == SoundType::SoundBlaster {
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[3], 6, dest_buffer);
+
+            if self.sounds.mus_type == SoundType::Adlib {
+                self.highlight_options_button_text(24, 57, 72, 8, dest_buffer);
+                self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[2], 6, dest_buffer);
+                return;
+            }
+
+            self.highlight_options_button_text(24, 129, 64, 8, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[4], 6, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[6], 6, dest_buffer);
+            return;
+        }
+
+        if self.sounds.snd_type == SoundType::Roland {
+            self.highlight_options_button_text(32, 93, 56, 8, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[4], 6, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[5], 6, dest_buffer);
+            return;
+        }
+
+        self.highlight_options_button_text(136, 18, 72, 8, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[7], 6, dest_buffer);
+
+        if self.sounds.snd_type == SoundType::InternalStandard {
+            self.highlight_options_button_text(128, 46, 40, 5, dest_buffer); // Standard
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[8], 6, dest_buffer);
+            return;
+        }
+
+        self.highlight_options_button_text(176, 46, 40, 5, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[9], 6, dest_buffer);
+    }
+
+    fn draw_audio_options_selection(&mut self, dest_buffer: DestinationSurface) {
+        if self.sounds.is_music_enabled {
+            self.highlight_options_button_text(134, 99, 40, 8, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[10], 6, dest_buffer);
+        } else {
+            self.dim_options_button_text(134, 99, 40, 8, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[10], 4, dest_buffer);
+        }
+
+        if self.sounds.is_fx_enabled {
+            self.highlight_options_button_text(136, 138, 24, 8, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[11], 6, dest_buffer);
+            return;
+        }
+
+        self.dim_options_button_text(136, 138, 24, 8, dest_buffer);
+        self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[11], 4, dest_buffer);
+    }
+
+    fn draw_input_options_selection(&mut self, dest_buffer: DestinationSurface)
+    // sub_4CCDF   proc near       ; CODE XREF: code:5B5Dp code:5B69p
+    {
+        if self.is_joystick_enabled == false {
+            self.highlight_options_button_text(208, 87, 8, 62, dest_buffer);
+            self.dim_options_button_text(240, 88, 8, 58, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[18], 4, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[19], 6, dest_buffer);
+        } else {
+            self.dim_options_button_text(208, 87, 8, 62, dest_buffer);
+            self.highlight_options_button_text(240, 88, 8, 58, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[18], 6, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[19], 4, dest_buffer);
+        }
+
+        self.update_options_menu_state(dest_buffer);
+    }
+
+    fn highlight_options_button_text(
+        &mut self,
+        start_x: usize,
+        start_y: usize,
+        width: usize,
+        height: usize,
+        dest_buffer: DestinationSurface,
+    ) {
+        // Copies a portion of the buffer replacing color 0xF (not selected)
+        // with color 0x1 (selected).
+        // Used in the options screen to highlight text from buttons.
+        //
+        // Parameters:
+        // - si: origin coordinates
+        // - cx: width / 8
+        // - dx: height
+
+        for y in start_y..(start_y + height) {
+            for x in start_x..(start_x + width) {
+                let addr = (y * K_SCREEN_WIDTH) + x;
+
+                let color = if self.graphics.get_pixel(dest_buffer, addr) == 0xF {
+                    0x1
+                } else {
+                    self.graphics.get_pixel(dest_buffer, addr)
+                };
+                self.graphics.set_pixel(dest_buffer, addr, color);
+            }
+        }
+    }
+
+    fn dim_options_button_text(
+        &mut self,
+        start_x: usize,
+        start_y: usize,
+        width: usize,
+        height: usize,
+        dest_buffer: DestinationSurface,
+    ) {
+        // Copies a portion of the buffer replacing color 0x1 (selected)
+        // with color 0xF (not selected).
+        // Used in the options screen to dim text from buttons.
+        //
+        // Parameters:
+        // - si: coordinates
+        // - cx: width / 8
+        // - dx: height
+
+        for y in start_y..(start_y + height) {
+            for x in start_x..(start_x + width) {
+                let addr = (y * K_SCREEN_WIDTH) + x;
+
+                let color = if self.graphics.get_pixel(dest_buffer, addr) == 0x1 {
+                    0xF
+                } else {
+                    self.graphics.get_pixel(dest_buffer, addr)
+                };
+                self.graphics.set_pixel(dest_buffer, addr, color);
+            }
+        }
+    }
+
+    fn draw_options_menu_line(
+        &mut self,
+        border: &[ButtonBorderLineDescriptor],
+        color: u8,
+        dest_buffer: DestinationSurface,
+    ) {
+        // Parameters:
+        // - ah: color
+        // - si: pointer to ButtonBorderDescriptor item
+
+        for i in 0..border.len() {
+            let line = &border[i];
+
+            let x = line.x as usize;
+            let y = line.y as usize;
+
+            for j in 0..line.length {
+                let offset = j as usize;
+                let mut dest_address = 0;
+                if line.button_type == ButtonBorderLineType::Horizontal {
+                    dest_address = y * K_SCREEN_WIDTH + x + offset;
+                } else if line.button_type == ButtonBorderLineType::Vertical {
+                    dest_address = (y - offset) * K_SCREEN_WIDTH + x;
+                } else if line.button_type == ButtonBorderLineType::LeftToTopRightDiagonal {
+                    dest_address = (y - offset) * K_SCREEN_WIDTH + x + offset;
+                } else if line.button_type == ButtonBorderLineType::TopLeftToBottomRightDiagonal {
+                    dest_address = (y + offset) * K_SCREEN_WIDTH + x + offset;
+                }
+
+                self.graphics.set_pixel(dest_buffer, dest_address, color);
+            }
+        }
+    }
+
+    fn update_options_menu_state(&mut self, dest_buffer: DestinationSurface) {
+        self.update_user_input();
+
+        let current_input = self.keyboard.borrow_mut().g_current_user_input;
+
+        if current_input as u8 == self.byte_50919 {
+            return;
+        }
+
+        self.byte_50919 = current_input as u8;
+        if current_input == UserInput::None {
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[12], 6, dest_buffer);
+            self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[17], 4, dest_buffer);
+        } else {
+            if current_input <= K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET {
+                self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[12], 4, dest_buffer);
+                self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[17], 4, dest_buffer);
+            } else {
+                self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[17], 6, dest_buffer);
+                if current_input != UserInput::SpaceOnly {
+                    self.keyboard.borrow_mut().g_current_user_input =
+                        match self.keyboard.borrow_mut().g_current_user_input {
+                            UserInput::SpaceDown => UserInput::Down,
+                            UserInput::SpaceUp => UserInput::Up,
+                            UserInput::SpaceLeft => UserInput::Left,
+                            UserInput::SpaceRight => UserInput::Right,
+                            _ => self.keyboard.borrow_mut().g_current_user_input,
+                        };
+                    self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[12], 4, dest_buffer);
+                } else {
+                    self.keyboard.borrow_mut().g_current_user_input = UserInput::None;
+                    self.draw_options_menu_line(K_OPTIONS_MENU_BORDERS[12], 6, dest_buffer);
+                }
+            }
+        }
+    }
+
+    fn save_configuration(&mut self) {
+        let path = format!("{}/{}", RESSOURCES_PATH, G_CONFIG_FILE_NAME);
+        let player_lst_file_path = Path::new(&path);
+        let mut file = File::create(player_lst_file_path)
+            .expect(format!("Error while opening {}", G_CONFIG_FILE_NAME).as_str());
+
+        let mut config_data: [u8; K_CONFIG_DATA_LENGTH] = [0; K_CONFIG_DATA_LENGTH];
+
+        if self.sounds.snd_type == SoundType::InternalSamples {
+            config_data[0] = 's' as u8;
+        } else if self.sounds.snd_type == SoundType::InternalStandard {
+            config_data[0] = 'i' as u8;
+        } else if self.sounds.snd_type == SoundType::Adlib {
+            config_data[0] = 'a' as u8;
+        } else if self.sounds.snd_type == SoundType::Roland {
+            config_data[0] = 'r' as u8;
+        } else if self.sounds.mus_type == SoundType::Roland {
+            config_data[0] = 'c' as u8;
+        } else {
+            config_data[0] = 'b' as u8;
+        }
+        if self.is_joystick_enabled == false {
+            config_data[1] = 'k' as u8;
+        } else {
+            config_data[1] = 'j' as u8;
+        }
+
+        if self.sounds.is_music_enabled {
+            config_data[2] = 'm' as u8;
+        } else {
+            config_data[2] = 'n' as u8;
+        }
+
+        if self.sounds.is_fx_enabled {
+            config_data[3] = 'x' as u8;
+        } else {
+            config_data[3] = 'y' as u8;
+        }
+
+        file.write_all(&config_data)
+            .expect(format!("Error writing {}", G_CONFIG_FILE_NAME).as_str());
     }
 }

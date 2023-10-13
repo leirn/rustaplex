@@ -530,9 +530,11 @@ impl Graphics<'_> {
         }
     }
 
-    pub fn fade_to_palette(&mut self, palette: ColorPalette) {
+    pub fn fade_to_palette(&mut self, palette_type: PaletteType) {
         // Parameters:
         // si -> points to the first color of the palette to fade to
+
+        let palette = self.get_palette(palette_type);
 
         let mut intermediate_palette: ColorPalette = G_BLACK_PALETTE;
 
@@ -573,7 +575,7 @@ impl Graphics<'_> {
             self.video_loop();
         }
 
-        self.set_palette(palette);
+        self.set_palette_data(palette);
     }
 
     /// Load CONTROLS.DAT
@@ -601,11 +603,6 @@ impl Graphics<'_> {
 
         self.g_controls_bitmap_data =
             Box::new(data[0..K_FULL_SCREEN_BITMAP_LENGTH].try_into().unwrap());
-    }
-
-    pub fn set_palette(&mut self, palette: ColorPalette) {
-        self.video.borrow_mut().set_color_palette(palette);
-        self.g_current_palette = palette.clone();
     }
 
     pub fn video_loop(&mut self) {
@@ -922,7 +919,7 @@ impl Graphics<'_> {
         }
 
         let title2_palette = Graphics::convert_palette_data_to_palette(G_TITLE2_PALETTE_DATA);
-        self.fade_to_palette(title2_palette);
+        self.fade_to_palette(PaletteType::Title2);
     }
 
     pub fn draw_menu_background(&mut self) {
@@ -955,8 +952,21 @@ impl Graphics<'_> {
         }
     }
 
-    pub fn get_palette(&mut self, palette: PaletteType) -> ColorPalette {
+    fn get_palette(&mut self, palette: PaletteType) -> ColorPalette {
         match palette {
+            PaletteType::Black => G_BLACK_PALETTE,
+            PaletteType::Title => {
+                let palette = Graphics::convert_palette_data_to_palette(G_TITLE_PALETTE_DATA);
+                palette
+            }
+            PaletteType::Title1 => {
+                let palette = Graphics::convert_palette_data_to_palette(G_TITLE1_PALETTE_DATA);
+                palette
+            }
+            PaletteType::Title2 => {
+                let palette = Graphics::convert_palette_data_to_palette(G_TITLE2_PALETTE_DATA);
+                palette
+            }
             PaletteType::InformationScreenPalette => self.g_palettes[0],
             PaletteType::GamePalette => self.g_palettes[1],
             PaletteType::ControlsPalette => self.g_palettes[2],
@@ -964,18 +974,40 @@ impl Graphics<'_> {
         }
     }
 
+    pub fn set_palette(&mut self, palette: PaletteType) {
+        let palette = self.get_palette(palette);
+        self.set_palette_data(palette);
+    }
+
+    fn set_palette_data(&mut self, palette: ColorPalette) {
+        self.video.borrow_mut().set_color_palette(palette);
+        self.g_current_palette = palette.clone();
+    }
+
     pub fn draw_back_background(&mut self) {
         self.draw_full_screen_bitmap(BitmapType::Background, DestinationSurface::Screen);
     }
 
-    fn draw_full_screen_bitmap(&mut self, bitmap: BitmapType, dest: DestinationSurface) {
+    pub fn draw_gfx_tutor_background(&mut self, dest: DestinationSurface) {
+        self.draw_full_screen_bitmap(BitmapType::Gfx, dest);
+    }
+
+    pub fn draw_options_background(&mut self, dest: DestinationSurface) // vgaloadcontrolsseg
+    {
+        self.draw_full_screen_bitmap(BitmapType::Control, dest);
+    }
+
+    fn get_pixel_from_bitmap(&mut self, bitmap: BitmapType, address: usize) -> u8 {
         let bitmap_data = match bitmap {
             BitmapType::Background => &self.g_back_bitmap_data,
             BitmapType::Control => &self.g_controls_bitmap_data,
             BitmapType::Gfx => &self.g_gfx_bitmap_data,
             BitmapType::Menu => &self.g_menu_bitmap_data,
         };
+        bitmap_data[address]
+    }
 
+    fn draw_full_screen_bitmap(&mut self, bitmap: BitmapType, dest: DestinationSurface) {
         for y in 0..K_SCREEN_HEIGHT {
             for x in 0..K_SCREEN_WIDTH {
                 let dest_pixel_address = y * K_SCREEN_WIDTH + x;
@@ -983,24 +1015,40 @@ impl Graphics<'_> {
                 let source_pixel_address = y * K_SCREEN_WIDTH / 2 + x / 8;
                 let source_pixel_bit_position = 7 - (x % 8);
 
-                let b = (bitmap_data[source_pixel_address + 0] >> source_pixel_bit_position) & 0x1;
-                let g = (bitmap_data[source_pixel_address + 40] >> source_pixel_bit_position) & 0x1;
-                let r = (bitmap_data[source_pixel_address + 80] >> source_pixel_bit_position) & 0x1;
-                let i =
-                    (bitmap_data[source_pixel_address + 120] >> source_pixel_bit_position) & 0x1;
+                let b = (self.get_pixel_from_bitmap(bitmap, source_pixel_address + 0)
+                    >> source_pixel_bit_position)
+                    & 0x1;
+                let g = (self.get_pixel_from_bitmap(bitmap, source_pixel_address + 40)
+                    >> source_pixel_bit_position)
+                    & 0x1;
+                let r = (self.get_pixel_from_bitmap(bitmap, source_pixel_address + 80)
+                    >> source_pixel_bit_position)
+                    & 0x1;
+                let i = (self.get_pixel_from_bitmap(bitmap, source_pixel_address + 120)
+                    >> source_pixel_bit_position)
+                    & 0x1;
 
                 let final_color = (b << 0) | (g << 1) | (r << 2) | (i << 3);
 
-                match dest {
-                    DestinationSurface::Screen => self
-                        .video
-                        .borrow_mut()
-                        .set_pixel(dest_pixel_address, final_color),
-                    DestinationSurface::Scroll => {
-                        self.g_scroll_destination_screen_bitmap_data[dest_pixel_address] =
-                            final_color
-                    }
-                }
+                self.set_pixel(dest, dest_pixel_address, final_color);
+            }
+        }
+    }
+
+    pub fn set_pixel(&mut self, dest: DestinationSurface, pixel_address: usize, color: u8) {
+        match dest {
+            DestinationSurface::Screen => self.video.borrow_mut().set_pixel(pixel_address, color),
+            DestinationSurface::Scroll => {
+                self.g_scroll_destination_screen_bitmap_data[pixel_address] = color
+            }
+        }
+    }
+
+    pub fn get_pixel(&mut self, dest: DestinationSurface, pixel_address: usize) -> u8 {
+        match dest {
+            DestinationSurface::Screen => self.video.borrow_mut().get_pixel(pixel_address),
+            DestinationSurface::Scroll => {
+                self.g_scroll_destination_screen_bitmap_data[pixel_address]
             }
         }
     }
@@ -1015,17 +1063,13 @@ impl Graphics<'_> {
 
             for j in 0..line.length {
                 let mut dest_address = 0;
-                if line.button_type == ButtonBorderLineType::ButtonBorderLineTypeHorizontal {
+                if line.button_type == ButtonBorderLineType::Horizontal {
                     dest_address = line.y * K_SCREEN_WIDTH as u16 + line.x + j;
-                } else if line.button_type == ButtonBorderLineType::ButtonBorderLineTypeVertical {
+                } else if line.button_type == ButtonBorderLineType::Vertical {
                     dest_address = (line.y - j) * K_SCREEN_WIDTH as u16 + line.x;
-                } else if line.button_type
-                    == ButtonBorderLineType::ButtonBorderLineTypeBottomLeftToTopRightDiagonal
-                {
+                } else if line.button_type == ButtonBorderLineType::LeftToTopRightDiagonal {
                     dest_address = (line.y - j) * K_SCREEN_WIDTH as u16 + line.x + j;
-                } else if line.button_type
-                    == ButtonBorderLineType::ButtonBorderLineTypeTopLeftToBottomRightDiagonal
-                {
+                } else if line.button_type == ButtonBorderLineType::TopLeftToBottomRightDiagonal {
                     dest_address = (line.y + j) * K_SCREEN_WIDTH as u16 + line.x + j;
                 }
                 self.video
@@ -1037,17 +1081,15 @@ impl Graphics<'_> {
         //saveLastMouseAreaBitmap();
         //drawMouseCursor();
     }
-
-    pub fn draw_gfx_tutor_background(&mut self, dest: DestinationSurface) {
-        self.draw_full_screen_bitmap(BitmapType::Gfx, dest);
-    }
 }
 
+#[derive(Clone, Copy)]
 pub enum DestinationSurface {
     Screen,
     Scroll,
 }
 
+#[derive(Clone, Copy)]
 enum BitmapType {
     Background,
     Menu,
@@ -1135,6 +1177,10 @@ pub enum DrawTextBuffer {
 }
 
 pub enum PaletteType {
+    Black,
+    Title,
+    Title1,
+    Title2,
     GamePalette,
     ControlsPalette,
     GameDimmedPalette,
