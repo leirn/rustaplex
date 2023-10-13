@@ -33,7 +33,6 @@ pub mod video;
 use crate::game::button_borders::{
     K_NUMBER_OF_OPTIONS_MENU_BUTTONS, K_OPTIONS_MENU_BUTTON_DESCRIPTORS,
 };
-use crate::game::demo::K_NUMBER_OF_DEMOS;
 use crate::game::graphics::DestinationSurface;
 
 use self::button_borders::{
@@ -50,16 +49,13 @@ use button_borders::{
 use demo::DemoManager;
 use game_states::GameStates;
 use globals::*;
-use graphics::{
-    Graphics, PaletteType, G_TITLE1_PALETTE_DATA, G_TITLE2_PALETTE_DATA, G_TITLE_PALETTE_DATA,
-    K_FULL_SCREEN_FRAMEBUFFER_LENGTH,
-};
+use graphics::{Graphics, PaletteType, K_FULL_SCREEN_FRAMEBUFFER_LENGTH};
 use keyboard::{Keys, UserInput, K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET};
 use mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
-use sdl2::event::{Event, WindowEvent};
+use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::keyboard::Scancode;
-use sdl2::sys::{SDL_EventType, SDL_Scancode};
+use sdl2::sys::SDL_EventType;
 use sdl2::EventPump;
 use sounds::Sounds;
 use std::cell::RefCell;
@@ -2408,13 +2404,66 @@ impl Game<'_> {
     }
     fn handle_player_list_scroll_up(&mut self) {
         log::info!("handle_player_list_scroll_up");
+        self.button_states.g_player_list_button_pressed = true;
+        self.button_states.g_player_list_down_button_pressed = false;
+        self.button_states.g_player_list_up_button_pressed = true;
+
+        if self.states.g_frame_counter - self.g_player_list_throttle_current_counter
+            < self.g_player_list_throttle_next_counter
+        {
+            return;
+        }
+
+        self.g_player_list_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_player_list_throttle_current_counter > 1 {
+            self.g_player_list_throttle_current_counter -= 1;
+        }
+
+        if self.g_is_forced_cheat_mode == false && self.states.g_current_player_index > 0 {
+            self.states.g_current_player_index -= 1;
+        }
+
+        self.g_should_autoselect_next_level_to_play = true;
+        self.prepare_level_data_for_current_player();
+        self.draw_player_list();
+        self.draw_level_list();
     }
+
     fn handle_player_list_scroll_down(&mut self) {
         log::info!("handle_player_list_scroll_down");
+        self.button_states.g_player_list_button_pressed = true;
+        self.button_states.g_player_list_down_button_pressed = true;
+        self.button_states.g_player_list_up_button_pressed = false;
+
+        if (self.states.g_frame_counter - self.g_player_list_throttle_current_counter
+            < self.g_player_list_throttle_next_counter)
+        {
+            return;
+        }
+
+        self.g_player_list_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_player_list_throttle_current_counter > 1 {
+            self.g_player_list_throttle_current_counter -= 1;
+        }
+
+        if self.g_is_forced_cheat_mode == false
+            && self.states.g_current_player_index < K_NUMBER_OF_PLAYERS - 1
+        {
+            self.states.g_current_player_index += 1;
+        }
+
+        self.g_should_autoselect_next_level_to_play = true;
+        self.prepare_level_data_for_current_player();
+        self.draw_player_list();
+        self.draw_level_list();
     }
+
     fn handle_player_list_click(&mut self) {
         log::info!("handle_player_list_click");
+        self.current_ranking_index = self.byte_58D47;
+        self.draw_rankings();
     }
+
     fn handle_level_list_scroll_up(&mut self) {
         log::info!("handle_level_list_scroll_up");
 
