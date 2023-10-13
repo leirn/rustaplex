@@ -28,6 +28,7 @@ mod sounds;
 mod utils;
 pub mod video;
 
+use crate::game::demo::K_NUMBER_OF_DEMOS;
 use crate::game::graphics::DestinationSurface;
 
 use self::graphics::{G_BLACK_PALETTE, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
@@ -415,14 +416,14 @@ impl Game<'_> {
 
         demo_first_index += 1; // To skip the level number
         self.demo_manager.g_demo_current_input_index = demo_first_index;
-        //    word_5A33C = demo_first_index;
-        self.demo_manager.g_demo_current_input = UserInput::UserInputNone;
+        self.demo_manager.word_5A33C = demo_first_index;
+        self.demo_manager.g_demo_current_input = UserInput::None;
         self.demo_manager.g_demo_current_input_repeater_count = 1;
     }
 
     fn load_all_ressources(&mut self) {
         self.read_levels_lst();
-        self.read_demo_files();
+        self.demo_manager.read_demo_files();
         self.read_hall_fame_lst();
         self.read_players_lst();
     }
@@ -487,8 +488,6 @@ impl Game<'_> {
             self.g_level_list_data[i] = Box::new(level);
         }
     }
-
-    fn read_demo_files(&mut self) {}
 
     /// Read the list of players in hall of fame file
     fn read_hall_fame_lst(&mut self) {
@@ -731,6 +730,14 @@ impl Game<'_> {
         let low_value: u16 = (clock_count & 0xffff) as u16;
         let high_value = ((clock_count >> 16) & 0xfff) as u16;
         self.g_random_generator_seed = high_value ^ low_value;
+    }
+
+    fn generate_random_number(&mut self) -> u16 {
+        let mut some_value = self.g_random_generator_seed;
+        some_value *= 0x5E5; // 1509
+        some_value += 0x31; // '1' or 49
+        self.g_random_generator_seed = some_value;
+        some_value / 2
     }
 
     fn initialize_fade_palette(&mut self) {
@@ -2121,7 +2128,62 @@ impl Game<'_> {
     }
     fn handle_demo_option_click(&mut self) {
         log::info!("handle_demo_option_click");
+        if self.demo_manager.read_demo_files() == 0 {
+            return;
+        }
+
+        self.states.g_should_leave_main_menu = true;
+        self.states.g_is_playing_demo = true;
+
+        let mut number_of_demos = 0;
+
+        let mut idx = 0; // usefull ? number_of_demos seems enough
+        loop {
+            if self.demo_manager.g_demos.demo_first_indices[idx] == 0xffff {
+                break;
+            }
+            idx += 1;
+            number_of_demos += 1;
+        }
+
+        // This picks a random demo
+        self.generate_random_seed_from_clock();
+        let demo_index = self.generate_random_number() % number_of_demos;
+        let mut demo_first_index =
+            self.demo_manager.g_demos.demo_first_indices[demo_index as usize];
+
+        // This only happens if there are no demos...
+        if demo_first_index == 0xffff {
+            self.states.g_should_leave_main_menu = false;
+            self.states.g_is_playing_demo = false;
+        }
+
+        let demo_level_number = self.demo_manager.g_demos.demo_data[demo_first_index as usize];
+        let mut final_level_number = demo_index;
+
+        self.demo_manager.g_selected_original_demo_index = demo_index;
+        self.demo_manager.g_selected_original_demo_level_number = 0;
+
+        // This checks if the level number has its MSB to 0 and is a valid level number (1-111) for the original DEMO format
+        if demo_level_number <= 0x6F // 111
+            && demo_level_number != 0
+        {
+            self.demo_manager.g_selected_original_demo_level_number =
+                (self.demo_manager.g_selected_original_demo_level_number & 0xFF00)
+                    | (demo_level_number as usize); // mov byte ptr gSelectedOriginalDemoLevelNumber, al
+            final_level_number = demo_level_number as u16;
+        }
+
+        self.g_random_generator_seed = self.demo_manager.g_demo_random_seeds[demo_index as usize];
+        self.demo_manager.g_selected_original_demo_level_number = final_level_number as usize;
+
+        demo_first_index += 1; // To skip the level number
+        self.demo_manager.g_demo_current_input_index = demo_first_index;
+        self.demo_manager.word_5A33C = demo_first_index;
+        self.demo_manager.g_demo_current_input = UserInput::None;
+        self.demo_manager.g_demo_current_input_repeater_count = 1;
     }
+
     fn handle_controls_option_click(&mut self) {
         log::info!("handle_controls_option_click");
     }
@@ -2289,25 +2351,25 @@ impl Game<'_> {
     fn update_user_input(&mut self) {
         let mut direction_key_was_pressed = 0;
 
-        self.keyboard.g_current_user_input = UserInput::UserInputNone;
+        self.keyboard.g_current_user_input = UserInput::None;
 
         if self.is_up_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::UserInputUp;
+            self.keyboard.g_current_user_input = UserInput::Up;
             direction_key_was_pressed = 1;
         }
 
         if self.is_left_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::UserInputLeft;
+            self.keyboard.g_current_user_input = UserInput::Left;
             direction_key_was_pressed = 1;
         }
 
         if self.is_down_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::UserInputDown;
+            self.keyboard.g_current_user_input = UserInput::Down;
             direction_key_was_pressed = 1;
         }
 
         if self.is_right_button_pressed() {
-            self.keyboard.g_current_user_input = UserInput::UserInputRight;
+            self.keyboard.g_current_user_input = UserInput::Right;
             direction_key_was_pressed = 1;
         }
 
@@ -2315,7 +2377,7 @@ impl Game<'_> {
             if direction_key_was_pressed == 1 {
                 self.keyboard.g_current_user_input += K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET;
             } else {
-                self.keyboard.g_current_user_input = UserInput::UserInputSpaceOnly;
+                self.keyboard.g_current_user_input = UserInput::SpaceOnly;
             }
         }
     }

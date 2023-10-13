@@ -47,10 +47,13 @@ pub struct DemoManager {
     recording_demo_message: String,
 
     pub g_selected_original_demo_level_number: usize,
+    pub g_selected_original_demo_index: u16,
     pub demo_file_name: String,
     g_demo0_bin_filename: String,
 
     pub g_demo_index_or_demo_level_number: u16,
+
+    pub word_5A33C: u16,
 }
 impl DemoManager {
     pub fn new() -> DemoManager {
@@ -60,7 +63,7 @@ impl DemoManager {
             g_is_sp_demo_available_to_run: 0,
             file_is_demo: false,
             g_is_playing_demo: false,
-            g_demo_current_input: UserInput::UserInputNone,
+            g_demo_current_input: UserInput::None,
             g_demo_current_input_index: 0,
             g_demo_current_input_repeater_count: 0,
             g_current_demo_level_name: String::from(".SP\0----- DEMO LEVEL! -----"),
@@ -113,9 +116,12 @@ impl DemoManager {
             ],
             recording_demo_message: String::from("--- RECORDING DEMO0 ---"),
             g_selected_original_demo_level_number: 0,
+            g_selected_original_demo_index: 0,
             demo_file_name: String::new(),
             g_demo0_bin_filename: String::from("DEMO0.BIN"),
             g_demo_index_or_demo_level_number: 0,
+
+            word_5A33C: 0,
         }
     }
 
@@ -135,7 +141,7 @@ impl DemoManager {
         self.g_demo_current_input_index = 0;
 
         self.g_demos.demo_first_indices = [0xffff; K_NUMBER_OF_DEMOS + 1];
-        //word_5A33C = 0;
+        self.word_5A33C = 0;
 
         for i in 0..K_NUMBER_OF_DEMOS {
             self.g_selected_original_demo_level_number = 0;

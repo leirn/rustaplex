@@ -264,43 +264,43 @@ impl Keys {
 #[derive(Default, Clone, Copy)]
 pub enum UserInput {
     #[default]
-    UserInputNone = 0,
-    UserInputUp = 1,
-    UserInputLeft = 2,
-    UserInputDown = 3,
-    UserInputRight = 4,
-    UserInputSpaceUp = 5,
-    UserInputSpaceLeft = 6,
-    UserInputSpaceDown = 7,
-    UserInputSpaceRight = 8,
-    UserInputSpaceOnly = 9,
+    None = 0,
+    Up = 1,
+    Left = 2,
+    Down = 3,
+    Right = 4,
+    SpaceUp = 5,
+    SpaceLeft = 6,
+    SpaceDown = 7,
+    SpaceRight = 8,
+    SpaceOnly = 9,
 }
 
 impl AddAssign<UserInput> for UserInput {
     fn add_assign(&mut self, other: Self) {
         let value = *self as u8 + other as u8;
         if value == 0 {
-            *self = UserInput::UserInputNone;
+            *self = UserInput::None;
         } else if value == 1 {
-            *self = UserInput::UserInputUp;
+            *self = UserInput::Up;
         } else if value == 2 {
-            *self = UserInput::UserInputLeft;
+            *self = UserInput::Left;
         } else if value == 3 {
-            *self = UserInput::UserInputDown;
+            *self = UserInput::Down;
         } else if value == 4 {
-            *self = UserInput::UserInputRight;
+            *self = UserInput::Right;
         } else if value == 5 {
-            *self = UserInput::UserInputSpaceUp;
+            *self = UserInput::SpaceUp;
         } else if value == 6 {
-            *self = UserInput::UserInputSpaceLeft;
+            *self = UserInput::SpaceLeft;
         } else if value == 7 {
-            *self = UserInput::UserInputSpaceDown;
+            *self = UserInput::SpaceDown;
         } else if value == 8 {
-            *self = UserInput::UserInputSpaceRight;
+            *self = UserInput::SpaceRight;
         } else if value == 0 {
-            *self = UserInput::UserInputSpaceOnly;
+            *self = UserInput::SpaceOnly;
         }
     }
 }
 
-pub const K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET: UserInput = UserInput::UserInputRight;
+pub const K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET: UserInput = UserInput::Right;
