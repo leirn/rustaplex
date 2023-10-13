@@ -40,7 +40,7 @@ use self::button_borders::{
 };
 use self::graphics::{K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
 use self::input::Input;
-use self::level::Level;
+use self::level::{Level, LevelManager};
 use self::sounds::SoundType;
 use button_borders::{
     ButtonStatus, K_MAIN_MENU_BUTTON_BORDERS, K_MAIN_MENU_BUTTON_DESCRIPTORS,
@@ -67,20 +67,67 @@ use std::thread::sleep;
 use std::time::Duration;
 use video::Video;
 
+struct Files {
+    player: String,
+    level_list: String,
+    hall_of_fame: String,
+    demo_bin: String,
+    savegame: String,
+}
+
+impl Files {
+    pub fn new() -> Files {
+        Files {
+            player: G_PLAYERS_LST_FILENAME.to_string(),
+            level_list: G_LEVELS_LST_FILENAME.to_string(),
+            hall_of_fame: G_HALL_OF_FAME_LST_FILENAME.to_string(),
+            demo_bin: "DEMO0.BIN".to_string(),
+            savegame: G_SAVEGAME_SAV_FILENAME.to_string(),
+        }
+    }
+
+    pub fn change_suffix(&mut self, suffix: &str) {
+        let mut current_suffix = suffix;
+        if current_suffix == "AT" {
+            current_suffix = "ST";
+        }
+        self.level_list = format!("{}{}", self.level_list.get(0..7).unwrap(), current_suffix);
+        self.player = format!("{}{}", self.player.get(0..8).unwrap(), current_suffix);
+        self.hall_of_fame = format!(
+            "{}{}",
+            self.hall_of_fame.get(0..0xa).unwrap(),
+            current_suffix
+        );
+
+        if current_suffix == "ST" {
+            current_suffix == "IN";
+        }
+
+        self.demo_bin = format!("{}{}", self.demo_bin.get(0..7).unwrap(), current_suffix);
+
+        if current_suffix == "IN" {
+            current_suffix == "AV";
+        }
+
+        self.savegame = format!("{}{}", self.savegame.get(0..0xa).unwrap(), current_suffix);
+    }
+}
+
 pub struct Game<'a> {
+    files: Files,
     sounds: Sounds<'a>,
     graphics: Graphics<'a>,
     video: Rc<RefCell<Video<'a>>>,
     events: EventPump,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     g_random_generator_seed: u16,
-    g_level_list_data: Box<[Box<Level>; K_NUMBER_OF_LEVEL_WITH_PADDING]>,
     g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
     g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
     g_is_game_busy: bool,
     g_is_debug_mode_enabled: bool,
     is_joystick_enabled: bool,
     demo_manager: DemoManager,
+    level_manager: LevelManager,
     states: GameStates,
     g_has_user_cheated: bool,
     g_should_autoselect_next_level_to_play: bool,
@@ -128,15 +175,13 @@ impl Game<'_> {
         let input = Input::new(keyboard.clone());
 
         Game {
+            files: Files::new(),
             sounds: Sounds::new(sdl_context.clone()),
             video: video.clone(),
             graphics: Graphics::init(video.clone(), sdl_context.clone()),
             events: events,
             sdl_context: sdl_context,
             g_random_generator_seed: 0,
-            g_level_list_data: Box::new(
-                [(); K_NUMBER_OF_LEVEL_WITH_PADDING].map(|_| Box::new(Level::new())),
-            ),
             g_player_list_data: [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new()),
             g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
                 .map(|_| HallOfFameEntry::new()),
@@ -144,6 +189,7 @@ impl Game<'_> {
             g_is_debug_mode_enabled: false,
             is_joystick_enabled: false,
             demo_manager: DemoManager::new(),
+            level_manager: LevelManager::new(),
             states: GameStates::new(),
             g_has_user_cheated: false,
             g_should_autoselect_next_level_to_play: false,
@@ -436,7 +482,7 @@ impl Game<'_> {
     }
 
     fn load_all_ressources(&mut self) {
-        self.read_levels_lst();
+        self.level_manager.read_levels_lst();
         self.demo_manager.read_demo_files();
         self.read_hall_fame_lst();
         self.read_players_lst();
@@ -448,58 +494,6 @@ impl Game<'_> {
         self.graphics.video_loop();
 
         self.graphics.read_title2_dat();
-    }
-
-    fn read_levels_lst(&mut self) {
-        // Re-init g_level_list_data
-        self.g_level_list_data =
-            Box::new([(); K_NUMBER_OF_LEVEL_WITH_PADDING].map(|_| Box::new(Level::new())));
-        self.g_level_list_data[K_LAST_LEVEL_INDEX].name =
-            String::from("- REPLAY SKIPPED LEVELS!! -");
-        self.g_level_list_data[K_LAST_LEVEL_INDEX + 1].name =
-            String::from("---- UNBELIEVEABLE!!!! ----");
-
-        let path = format!(
-            "{}/{}",
-            RESSOURCES_PATH, self.demo_manager.g_levels_dat_filename
-        );
-        let level_lst_file_path = Path::new(&path);
-        match level_lst_file_path.try_exists().expect(
-            format!(
-                "Can't check existence of file {}",
-                self.demo_manager.g_levels_dat_filename
-            )
-            .as_str(),
-        ) {
-            true => (),
-            false => panic!("{:?} doesn't exists", level_lst_file_path.canonicalize()),
-        }
-        let mut file = File::open(level_lst_file_path).expect(
-            format!(
-                "Error while opening {}",
-                self.demo_manager.g_levels_dat_filename
-            )
-            .as_str(),
-        );
-
-        let mut file_data = [0_u8; K_LEVEL_DATA_LENGTH];
-
-        for i in 0..K_NUMBER_OF_LEVELS {
-            let seek_offset = i * K_LEVEL_DATA_LENGTH;
-            file.seek(SeekFrom::Start(seek_offset as u64)).expect(
-                format!(
-                    "Error while seeking offset {} in {}",
-                    seek_offset, G_LEVELS_LST_FILENAME
-                )
-                .as_str(),
-            );
-            file.read(&mut file_data)
-                .expect(format!("Error while reading {}", G_LEVELS_LST_FILENAME).as_str());
-
-            let level = Level::from_raw(i, file_data);
-
-            self.g_level_list_data[i] = Box::new(level);
-        }
     }
 
     /// Read the list of players in hall of fame file
@@ -940,7 +934,8 @@ impl Game<'_> {
 
         let previous_level_name = match self.states.g_current_selected_level_index {
             0 | 1 => String::from(" ").repeat(27),
-            _ => self.g_level_list_data[self.states.g_current_selected_level_index as usize - 2]
+            _ => self.level_manager.g_level_list_data
+                [self.states.g_current_selected_level_index as usize - 2]
                 .name
                 .clone(),
         };
@@ -953,7 +948,8 @@ impl Game<'_> {
 
         self.states.g_current_level_name = match self.states.g_current_selected_level_index {
             0 => String::from(" ").repeat(27),
-            _ => self.g_level_list_data[self.states.g_current_selected_level_index as usize - 1]
+            _ => self.level_manager.g_level_list_data
+                [self.states.g_current_selected_level_index as usize - 1]
                 .name
                 .clone(),
         };
@@ -964,7 +960,7 @@ impl Game<'_> {
             self.states.g_current_level_name.clone(),
         );
 
-        let next_level_name = self.g_level_list_data
+        let next_level_name = self.level_manager.g_level_list_data
             [self.states.g_current_selected_level_index as usize]
             .name
             .clone();
@@ -1109,10 +1105,10 @@ impl Game<'_> {
               /*{
                   runAdvancedOptionsRootMenu();
               } else if (isRotateLevelSetAscendingButtonPressed()) {
-                  throttledRotateLevelSet(0);
+                  self.throttled_rotate_level_set(0);
                   continue; // This allows the throttling effect to act
               } else if (isRotateLevelSetDescendingButtonPressed()) {
-                  throttledRotateLevelSet(1);
+                  self.throttled_rotate_level_set(1);
                   continue; // This allows the throttling effect to act
               }*/
             if self.g_should_exit_game {
@@ -2398,10 +2394,17 @@ impl Game<'_> {
 
     fn handle_ok_button_click(&mut self) {
         log::info!("handle_ok_button_click");
+        // Pressing the shift key will show the level sets in descending order
     }
+
     fn handle_floppy_disk_button_click(&mut self) {
         log::info!("handle_floppy_disk_button_click");
+        self.throttled_rotate_level_set(
+            self.keyboard.borrow().g_is_right_shift_pressed
+                || self.keyboard.borrow().g_is_left_shift_pressed,
+        );
     }
+
     fn handle_player_list_scroll_up(&mut self) {
         log::info!("handle_player_list_scroll_up");
         self.button_states.g_player_list_button_pressed = true;
@@ -2435,8 +2438,8 @@ impl Game<'_> {
         self.button_states.g_player_list_down_button_pressed = true;
         self.button_states.g_player_list_up_button_pressed = false;
 
-        if (self.states.g_frame_counter - self.g_player_list_throttle_current_counter
-            < self.g_player_list_throttle_next_counter)
+        if self.states.g_frame_counter - self.g_player_list_throttle_current_counter
+            < self.g_player_list_throttle_next_counter
         {
             return;
         }
@@ -3090,5 +3093,111 @@ impl Game<'_> {
 
         file.write_all(&config_data)
             .expect(format!("Error writing {}", G_CONFIG_FILE_NAME).as_str());
+    }
+
+    fn throttled_rotate_level_set(&mut self, descending: bool) {
+        if self.states.g_frame_counter - self.g_level_set_rotation_throttle_current_counter
+            < self.g_level_set_rotation_throttle_next_counter
+        {
+            return;
+        }
+
+        self.g_level_set_rotation_throttle_next_counter = self.states.g_frame_counter;
+        if self.g_level_set_rotation_throttle_current_counter > 1 {
+            self.g_level_set_rotation_throttle_current_counter -= 1;
+        }
+
+        self.rotate_level_set(descending);
+    }
+
+    fn rotate_level_set(&mut self, descending: bool) {
+        let mut current_suffix = "AT";
+        let mut new_suffix;
+        loop {
+            current_suffix = self.level_manager.g_levels_dat_filename.get(8..).unwrap();
+
+            if descending {
+                if current_suffix == "AT"
+                // "AT"
+                {
+                    new_suffix = "99".to_string();
+                } else if current_suffix == "00"
+                // "00"
+                {
+                    new_suffix = "AT".to_string();
+                } else {
+                    let mut index = current_suffix.parse::<u8>().unwrap();
+                    index -= 1;
+                    new_suffix = format!("{:02}", index);
+                }
+            } else {
+                if current_suffix == "AT"
+                // "AT"
+                {
+                    new_suffix = "00".to_string();
+                } else if current_suffix == "99"
+                // "99"
+                {
+                    new_suffix = "AT".to_string();
+                } else {
+                    let mut index = current_suffix.parse::<u8>().unwrap();
+                    index += 1;
+                    new_suffix = format!("{:02}", index);
+                }
+            }
+
+            self.level_manager.g_levels_dat_filename = format!(
+                "{}{}",
+                self.level_manager.g_levels_dat_filename.get(0..8).unwrap(),
+                new_suffix
+            );
+            self.demo_manager.g_levels_dat_filename =
+                self.level_manager.g_levels_dat_filename.clone();
+
+            let path = format!(
+                "{}/{}",
+                RESSOURCES_PATH, self.level_manager.g_levels_dat_filename
+            );
+
+            if Path::new(path.as_str()).exists() {
+                break;
+            }
+        }
+
+        self.files.change_suffix(new_suffix.as_str());
+
+        self.level_manager.read_levels_lst();
+        self.demo_manager.read_demo_files();
+
+        if self.g_is_forced_cheat_mode {
+            self.g_player_list_data[0].level_state = [PlayerLevelState::Skipped; K_NUMBER_OF_LEVELS]
+        } else {
+            self.g_player_list_data = [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new());
+            self.g_hall_of_fame_data =
+                [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES].map(|_| HallOfFameEntry::new());
+            self.read_hall_fame_lst();
+            self.read_players_lst();
+        }
+
+        self.update_menu_after_level_set_changed();
+    }
+
+    fn update_menu_after_level_set_changed(&mut self) {
+        let current_suffix = self.level_manager.g_levels_dat_filename.get(8..).unwrap();
+
+        let message = if current_suffix == "AT" {
+            "  SUPAPLEX LEVEL SET   ".to_string()
+        } else {
+            format!("     LEVEL SET {}      ", current_suffix)
+        };
+
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(168, 127, 4, message);
+
+        self.g_should_autoselect_next_level_to_play = true;
+        self.prepare_level_data_for_current_player();
+        self.draw_player_list();
+        self.draw_level_list();
+        self.draw_hall_of_fame();
+        self.draw_rankings();
     }
 }

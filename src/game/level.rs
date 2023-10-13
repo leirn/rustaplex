@@ -15,7 +15,73 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+use std::{
+    fs::File,
+    io::{Read, Seek, SeekFrom},
+    path::Path,
+};
+
 use crate::game::globals::*;
+
+pub struct LevelManager {
+    pub g_level_list_data: Box<[Box<Level>; K_NUMBER_OF_LEVEL_WITH_PADDING]>,
+    pub g_levels_dat_filename: String,
+}
+
+impl LevelManager {
+    pub fn new() -> LevelManager {
+        LevelManager {
+            g_level_list_data: Box::new(
+                [(); K_NUMBER_OF_LEVEL_WITH_PADDING].map(|_| Box::new(Level::new())),
+            ),
+            g_levels_dat_filename: String::from("LEVELS.DAT"),
+        }
+    }
+
+    pub fn read_levels_lst(&mut self) {
+        // Re-init g_level_list_data
+        self.g_level_list_data =
+            Box::new([(); K_NUMBER_OF_LEVEL_WITH_PADDING].map(|_| Box::new(Level::new())));
+        self.g_level_list_data[K_LAST_LEVEL_INDEX].name =
+            String::from("- REPLAY SKIPPED LEVELS!! -");
+        self.g_level_list_data[K_LAST_LEVEL_INDEX + 1].name =
+            String::from("---- UNBELIEVEABLE!!!! ----");
+
+        let path = format!("{}/{}", RESSOURCES_PATH, self.g_levels_dat_filename);
+        let level_lst_file_path = Path::new(&path);
+        match level_lst_file_path.try_exists().expect(
+            format!(
+                "Can't check existence of file {}",
+                self.g_levels_dat_filename
+            )
+            .as_str(),
+        ) {
+            true => (),
+            false => panic!("{:?} doesn't exists", level_lst_file_path.canonicalize()),
+        }
+        let mut file = File::open(level_lst_file_path)
+            .expect(format!("Error while opening {}", self.g_levels_dat_filename).as_str());
+
+        let mut file_data = [0_u8; K_LEVEL_DATA_LENGTH];
+
+        for i in 0..K_NUMBER_OF_LEVELS {
+            let seek_offset = i * K_LEVEL_DATA_LENGTH;
+            file.seek(SeekFrom::Start(seek_offset as u64)).expect(
+                format!(
+                    "Error while seeking offset {} in {}",
+                    seek_offset, G_LEVELS_LST_FILENAME
+                )
+                .as_str(),
+            );
+            file.read(&mut file_data)
+                .expect(format!("Error while reading {}", G_LEVELS_LST_FILENAME).as_str());
+
+            let level = Level::from_raw(i, file_data);
+
+            self.g_level_list_data[i] = Box::new(level);
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Level {
