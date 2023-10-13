@@ -261,7 +261,7 @@ impl Keys {
     }
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, PartialOrd)]
 pub enum UserInput {
     #[default]
     None = 0,
