@@ -800,8 +800,16 @@ impl Graphics<'_> {
                         + (idx * K_BITMAP_FONT_CHARACTER_8_WIDTH + dest_x + x);
                     match buffer {
                         // TODO : Write to right buffer
-                        DrawTextBuffer::G_SCREEN_PIXEL => (),
-                        DrawTextBuffer::G_PANEL_RENDERED_BITMAP_DATA => (), //buffer[dest_address] = color * pixel_value;
+                        DrawTextBuffer::G_SCREEN_PIXEL => self.set_pixel(
+                            DestinationSurface::Screen,
+                            dest_address,
+                            color * pixel_value,
+                        ),
+                        DrawTextBuffer::G_PANEL_RENDERED_BITMAP_DATA => self.set_pixel(
+                            DestinationSurface::RenderedBitmap,
+                            dest_address,
+                            color * pixel_value,
+                        ), //buffer[dest_address] = color * pixel_value;
                     }
                 }
             }
@@ -1174,7 +1182,8 @@ impl Graphics<'_> {
             }
 
             let final_x = dst_x as i32 - K_LEVEL_EDGE_SIZE as i32;
-            let final_width = std::cmp::min(width as i32, K_LEVEL_BITMAP_WIDTH as i32 - final_x) as usize;
+            let final_width =
+                std::cmp::min(width as i32, K_LEVEL_BITMAP_WIDTH as i32 - final_x) as usize;
             let src_address = (src_y + y) * K_MOVING_BITMAP_WIDTH + src_x;
             let dst_address = (final_y * K_LEVEL_BITMAP_WIDTH as i32 + final_x) as usize;
 
