@@ -45,6 +45,7 @@ pub struct DemoManager {
     g_current_demo_level_name: String,
 
     recording_demo_message: String,
+    pub g_demo_recording_just_started: bool,
 
     pub g_selected_original_demo_level_number: usize,
     pub g_selected_original_demo_index: u16,
@@ -115,6 +116,8 @@ impl DemoManager {
                 },
             ],
             recording_demo_message: String::from("--- RECORDING DEMO0 ---"),
+
+            g_demo_recording_just_started: false,
             g_selected_original_demo_level_number: 0,
             g_selected_original_demo_index: 0,
             demo_file_name: String::new(),
