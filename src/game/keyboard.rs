@@ -259,6 +259,19 @@ impl Keys {
             _ => '\0',
         }
     }
+
+    pub fn is_any_f1_to_f10_keys_pressed(&mut self) -> bool {
+        self.g_is_f1_key_pressed
+            || self.g_is_f2_key_pressed
+            || self.g_is_f3_key_pressed
+            || self.g_is_f4_key_pressed
+            || self.g_is_f5_key_pressed
+            || self.g_is_f6_key_pressed
+            || self.g_is_f7_key_pressed
+            || self.g_is_f8_key_pressed
+            || self.g_is_f9_key_pressed
+            || self.g_is_f10_key_pressed
+    }
 }
 
 #[derive(Default, Clone, Copy, PartialEq, PartialOrd)]
