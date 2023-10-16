@@ -20,6 +20,7 @@ use clap::Parser;
 use game::Game;
 use log::info;
 use std::env;
+use std::thread;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -50,10 +51,17 @@ fn main() {
     };
 
     env::set_var("RUST_LOG", loglevel);
+    env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
 
     info!("Start Rustaplex 0.1");
 
-    let mut game = Game::new();
-    game.start();
+    let child = thread::Builder::new().stack_size(32 * 1024 * 1024).spawn(move || {
+        return Game::new().start();
+    }).unwrap();
+
+    let matches = child.join().unwrap();
+
+    //let mut game = Box::new(Game::new());
+    //game.start();
 }

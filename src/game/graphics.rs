@@ -38,7 +38,8 @@ pub struct Graphics<'a> {
     g_panel_decoded_bitmap_data: Box<[u8; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH]>,
     g_panel_rendered_bitmap_data: Box<[u8; K_PANEL_BITMAP_HEIGHT * K_PANEL_BITMAP_WIDTH]>,
     g_title2_decoded_bitmap_data: Box<[u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]>,
-    pub g_scroll_destination_screen_bitmap_data: Box<[u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]>,
+    g_scroll_destination_screen_bitmap_data: Box<[u8; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]>,
+    g_level_bitmap_data: Box<[u8; K_LEVEL_BITMAP_WIDTH * K_LEVEL_BITMAP_HEIGHT]>,
     g_palettes: Box<[ColorPalette; K_NUMBER_OF_PALETTES]>,
     g_current_palette: ColorPalette,
     g_should_show_fps: bool,
@@ -49,6 +50,11 @@ pub struct Graphics<'a> {
     s_last_frame_time: u32,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     g_render_delta_time: u32,
+    pub fast_mode: FastModeType,
+    pub g_scroll_offset_x: i32,
+    pub g_scroll_offset_y: i32,
+    pub g_additional_scroll_offset_x: i32,
+    pub g_additional_scroll_offset_y: i32,
 }
 
 impl Graphics<'_> {
@@ -79,6 +85,7 @@ impl Graphics<'_> {
             g_scroll_destination_screen_bitmap_data: Box::new(
                 [0; K_FULL_SCREEN_FRAMEBUFFER_LENGTH],
             ),
+            g_level_bitmap_data: Box::new([0; K_LEVEL_BITMAP_WIDTH * K_LEVEL_BITMAP_HEIGHT]),
             g_title2_decoded_bitmap_data: Box::new([0; K_FULL_SCREEN_FRAMEBUFFER_LENGTH]),
             g_palettes: Box::new([G_BLACK_PALETTE; K_NUMBER_OF_PALETTES]),
             g_current_palette: G_BLACK_PALETTE,
@@ -90,6 +97,12 @@ impl Graphics<'_> {
             s_last_frame_time: 0,
             sdl_context: sdl_context,
             g_render_delta_time: 0,
+            fast_mode: FastModeType::None,
+
+            g_scroll_offset_x: 0,
+            g_scroll_offset_y: 0,
+            g_additional_scroll_offset_x: 0,
+            g_additional_scroll_offset_y: 0,
         };
         graphics.load_murphy_sprites();
         graphics.read_palettes_dat();
@@ -997,14 +1010,15 @@ impl Graphics<'_> {
         self.draw_full_screen_bitmap(BitmapType::Control, dest);
     }
 
-    fn get_pixel_from_bitmap(&mut self, bitmap: BitmapType, address: usize) -> u8 {
-        let bitmap_data = match bitmap {
-            BitmapType::Background => &self.g_back_bitmap_data,
-            BitmapType::Control => &self.g_controls_bitmap_data,
-            BitmapType::Gfx => &self.g_gfx_bitmap_data,
-            BitmapType::Menu => &self.g_menu_bitmap_data,
-        };
-        bitmap_data[address]
+    pub fn get_pixel_from_bitmap(&mut self, bitmap: BitmapType, address: usize) -> u8 {
+        match bitmap {
+            BitmapType::Background => self.g_back_bitmap_data[address],
+            BitmapType::Control => self.g_controls_bitmap_data[address],
+            BitmapType::Gfx => self.g_gfx_bitmap_data[address],
+            BitmapType::Menu => self.g_menu_bitmap_data[address],
+            BitmapType::MovingDecoded => self.g_moving_decoded_bitmap_data[address],
+            BitmapType::FixedDecoded => self.g_fixed_decoded_bitmap_data[address],
+        }
     }
 
     fn draw_full_screen_bitmap(&mut self, bitmap: BitmapType, dest: DestinationSurface) {
@@ -1041,6 +1055,11 @@ impl Graphics<'_> {
             DestinationSurface::Scroll => {
                 self.g_scroll_destination_screen_bitmap_data[pixel_address] = color
             }
+            DestinationSurface::Level => self.g_level_bitmap_data[pixel_address] = color,
+
+            DestinationSurface::RenderedBitmap => {
+                self.g_panel_rendered_bitmap_data[pixel_address] = color
+            }
         }
     }
 
@@ -1050,6 +1069,8 @@ impl Graphics<'_> {
             DestinationSurface::Scroll => {
                 self.g_scroll_destination_screen_bitmap_data[pixel_address]
             }
+            DestinationSurface::Level => self.g_level_bitmap_data[pixel_address],
+            DestinationSurface::RenderedBitmap => self.g_panel_rendered_bitmap_data[pixel_address],
         }
     }
 
@@ -1081,20 +1102,129 @@ impl Graphics<'_> {
         //saveLastMouseAreaBitmap();
         //drawMouseCursor();
     }
+
+    pub fn clear_game_panel(&mut self) {
+        self.g_panel_rendered_bitmap_data = self.g_panel_decoded_bitmap_data.clone();
+    }
+
+    fn draw_level_viewport(&mut self, x: i32, y: i32, width: usize, height: usize) {
+        if self.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        let scroll_x = std::cmp::max(0, std::cmp::min(x, (K_LEVEL_BITMAP_WIDTH - width) as i32));
+        let scroll_y = std::cmp::max(0, std::cmp::min(y, (K_LEVEL_BITMAP_HEIGHT - height) as i32));
+
+        for y in 0..height {
+            let dst_address = y * K_SCREEN_WIDTH;
+            let src_address =
+                ((scroll_y + y as i32) * K_LEVEL_BITMAP_WIDTH as i32 + scroll_x as i32) as usize;
+            for i in 0..width {
+                let color = self.get_pixel(DestinationSurface::Level, src_address + i);
+                self.set_pixel(DestinationSurface::Screen, dst_address + i, color);
+            }
+        }
+    }
+
+    pub fn draw_current_level_viewport(&mut self, panel_height: usize) {
+        if self.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        let viewport_height = K_SCREEN_HEIGHT - panel_height;
+
+        self.draw_level_viewport(
+            self.g_scroll_offset_x,
+            self.g_scroll_offset_y,
+            K_SCREEN_WIDTH,
+            viewport_height,
+        );
+
+        for y in 0..panel_height {
+            let src_address = y as usize * K_PANEL_BITMAP_WIDTH;
+            let dst_address = (viewport_height + y) * K_SCREEN_WIDTH;
+
+            for i in 0..K_PANEL_BITMAP_WIDTH {
+                let color = self.get_pixel(DestinationSurface::RenderedBitmap, src_address + i);
+                self.set_pixel(DestinationSurface::Screen, dst_address + i, color);
+            }
+        }
+    }
+
+    fn draw_moving_sprite_frame_in_level(
+        &mut self,
+        src_x: usize,
+        src_y: usize,
+        width: usize,
+        height: usize,
+        dst_x: usize,
+        dst_y: usize,
+    ) {
+        if self.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        assert!((width % K_TILE_SIZE) == 0);
+
+        for y in 0..height {
+            let final_y = (dst_y + y) as i32 - K_LEVEL_EDGE_SIZE as i32;
+
+            if final_y < 0 || final_y >= K_LEVEL_BITMAP_HEIGHT.try_into().unwrap() {
+                continue;
+            }
+
+            let final_x = dst_x as i32 - K_LEVEL_EDGE_SIZE as i32;
+            let final_width = std::cmp::min(width as i32, K_LEVEL_BITMAP_WIDTH as i32 - final_x) as usize;
+            let src_address = (src_y + y) * K_MOVING_BITMAP_WIDTH + src_x;
+            let dst_address = (final_y * K_LEVEL_BITMAP_WIDTH as i32 + final_x) as usize;
+
+            for i in 0..K_PANEL_BITMAP_WIDTH {
+                let color = self.get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address + i);
+                self.set_pixel(DestinationSurface::Level, dst_address + i, color);
+            }
+        }
+    }
+
+    pub fn draw_moving_frame(&mut self, src_x: usize, src_y: usize, dest_position: usize) {
+        if self.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        // Draws a frame from MOVING.DAT on the screen
+        // Parameters:
+        // - di: coordinates on the screen
+        // - si: coordinates on the MOVING.DAT bitmap to draw from?
+
+        let dest_x = (dest_position % K_LEVEL_WIDTH) * K_TILE_SIZE;
+        let dest_y = (dest_position / K_LEVEL_WIDTH) * K_TILE_SIZE;
+
+        self.draw_moving_sprite_frame_in_level(
+            src_x,
+            src_y,
+            K_TILE_SIZE,
+            K_TILE_SIZE,
+            dest_x,
+            dest_y,
+        );
+    }
 }
 
 #[derive(Clone, Copy)]
 pub enum DestinationSurface {
     Screen,
     Scroll,
+    Level,
+    RenderedBitmap,
 }
 
 #[derive(Clone, Copy)]
-enum BitmapType {
+pub enum BitmapType {
     Background,
     Menu,
     Control,
     Gfx,
+    MovingDecoded,
+    FixedDecoded,
 }
 
 /*
@@ -1129,12 +1259,12 @@ pub const K_NUMBER_OF_COLORS: usize = 16;
 const K_NUMBER_OF_PALETTES: usize = 4;
 const K_PALETTE_DATA_SIZE: usize = 64;
 
-const K_MOVING_BITMAP_WIDTH: usize = 320;
+pub const K_MOVING_BITMAP_WIDTH: usize = 320;
 const K_MOVING_BITMAP_HEIGHT: usize = 462;
-const K_FIXED_BITMAP_WIDTH: usize = 460;
+pub const K_FIXED_BITMAP_WIDTH: usize = 460;
 const K_FIXED_BITMAP_HEIGHT: usize = 16;
 const K_PANEL_BITMAP_WIDTH: usize = 320;
-const K_PANEL_BITMAP_HEIGHT: usize = 24;
+pub const K_PANEL_BITMAP_HEIGHT: usize = 24;
 
 const K_BITMAP_FONT_CHARACTER_HEIGHT: usize = 7;
 const K_BITMAP_FONT_CHARACTER_6_WIDTH: usize = 6;
@@ -1142,6 +1272,13 @@ const K_BITMAP_FONT_CHARACTER_8_WIDTH: usize = 8;
 
 pub type ColorPalette = [Color; K_NUMBER_OF_COLORS];
 type ColorPaletteData = [u8; K_PALETTE_DATA_SIZE];
+
+pub const K_LEVEL_EDGE_SIZE: usize = 8;
+pub const K_TILE_SIZE: usize = 16;
+pub const K_LEVEL_BITMAP_WIDTH: usize =
+    K_TILE_SIZE * (K_LEVEL_WIDTH - 2) + K_LEVEL_EDGE_SIZE + K_LEVEL_EDGE_SIZE;
+pub const K_LEVEL_BITMAP_HEIGHT: usize =
+    K_TILE_SIZE * (K_LEVEL_HEIGHT - 2) + K_LEVEL_EDGE_SIZE + K_LEVEL_EDGE_SIZE;
 
 pub const G_BLACK_PALETTE: ColorPalette = [Color {
     r: 0,

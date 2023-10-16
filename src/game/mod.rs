@@ -33,14 +33,17 @@ pub mod video;
 use crate::game::button_borders::{
     K_NUMBER_OF_OPTIONS_MENU_BUTTONS, K_OPTIONS_MENU_BUTTON_DESCRIPTORS,
 };
-use crate::game::graphics::DestinationSurface;
+use crate::game::graphics::{
+    DestinationSurface, K_FIXED_BITMAP_WIDTH, K_LEVEL_BITMAP_HEIGHT, K_LEVEL_BITMAP_WIDTH,
+    K_LEVEL_EDGE_SIZE, K_TILE_SIZE,
+};
 
 use self::button_borders::{
     ButtonBorderLineDescriptor, ButtonBorderLineType, K_OPTIONS_MENU_BORDERS,
 };
-use self::graphics::{K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
+use self::graphics::{BitmapType, K_PANEL_BITMAP_HEIGHT, K_SCREEN_HEIGHT, K_SCREEN_WIDTH};
 use self::input::Input;
-use self::level::{Level, LevelManager};
+use self::level::LevelManager;
 use self::sounds::SoundType;
 use button_borders::{
     ButtonStatus, K_MAIN_MENU_BUTTON_BORDERS, K_MAIN_MENU_BUTTON_DESCRIPTORS,
@@ -49,7 +52,7 @@ use button_borders::{
 use demo::DemoManager;
 use game_states::GameStates;
 use globals::*;
-use graphics::{Graphics, PaletteType, K_FULL_SCREEN_FRAMEBUFFER_LENGTH};
+use graphics::{Graphics, PaletteType, K_FULL_SCREEN_FRAMEBUFFER_LENGTH, K_MOVING_BITMAP_WIDTH};
 use keyboard::{Keys, UserInput, K_USER_INPUT_SPACE_AND_DIRECTION_OFFSET};
 use mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
 use sdl2::event::Event;
@@ -60,7 +63,7 @@ use sdl2::EventPump;
 use sounds::Sounds;
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Write};
 use std::path::Path;
 use std::rc::Rc;
 use std::thread::sleep;
@@ -121,20 +124,19 @@ pub struct Game<'a> {
     events: EventPump,
     sdl_context: Rc<RefCell<sdl2::Sdl>>,
     g_random_generator_seed: u16,
-    g_player_list_data: [PlayerEntry; K_NUMBER_OF_PLAYERS],
-    g_hall_of_fame_data: [HallOfFameEntry; K_NUMBER_OF_HALL_OF_FAME_ENTRIES],
+    g_player_list_data: Box<[Box<PlayerEntry>; K_NUMBER_OF_PLAYERS]>,
+    g_hall_of_fame_data: Box<[Box<HallOfFameEntry>; K_NUMBER_OF_HALL_OF_FAME_ENTRIES]>,
     g_is_game_busy: bool,
     g_is_debug_mode_enabled: bool,
     is_joystick_enabled: bool,
-    demo_manager: DemoManager,
-    level_manager: LevelManager,
+    demo_manager: Box<DemoManager>,
+    level_manager: Box<LevelManager>,
     states: GameStates,
     g_has_user_cheated: bool,
     g_should_autoselect_next_level_to_play: bool,
     g_is_forced_level: u8,
     g_is_forced_cheat_mode: bool,
     g_is_playing_demo: bool,
-    g_sp_demo_file_name: String,
     g_should_start_from_saved_snapshot: bool,
     word_58467: bool,
     byte_5A19B: bool,
@@ -182,21 +184,20 @@ impl Game<'_> {
             events: events,
             sdl_context: sdl_context,
             g_random_generator_seed: 0,
-            g_player_list_data: [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new()),
-            g_hall_of_fame_data: [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
-                .map(|_| HallOfFameEntry::new()),
+            g_player_list_data: Box::new([(); K_NUMBER_OF_PLAYERS].map(|_|Box::new( PlayerEntry::new()))),
+            g_hall_of_fame_data: Box::new([(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES]
+                .map(|_| Box::new(HallOfFameEntry::new()))),
             g_is_game_busy: false,
             g_is_debug_mode_enabled: false,
             is_joystick_enabled: false,
-            demo_manager: DemoManager::new(),
-            level_manager: LevelManager::new(),
+            demo_manager: Box::new(DemoManager::new()),
+            level_manager: Box::new(LevelManager::new()),
             states: GameStates::new(),
             g_has_user_cheated: false,
             g_should_autoselect_next_level_to_play: false,
             g_is_forced_level: 0,
             g_is_forced_cheat_mode: false,
             g_is_playing_demo: false,
-            g_sp_demo_file_name: String::new(),
             g_should_start_from_saved_snapshot: false,
             word_58467: true,
             byte_5A19B: false,
@@ -336,53 +337,46 @@ impl Game<'_> {
             if should_quit_the_game {
                 break;
             }
-            /* TODO later since only in second cycle
-                        self.read_levels();
-                        self.graphics.fade_to_palette(PaletteType::Black);
-                        self.g_is_game_busy = false;
-                        self.draw_player_list();
-                        self.initialize_game_info();
-                        self.draw_fixed_level();
-                        self.draw_game_panel(); // 01ED:0311
-                        let number_of_infotrons: u16 = self.convert_to_easy_tiles();
-                        self.reset_number_of_infotrons(number_of_infotrons);
-                        self.find_murphy();
-                        gCurrentPanelHeight = kPanelBitmapHeight;
-                        drawCurrentLevelViewport(gCurrentPanelHeight); // Added by me
-                        fadeToPalette(gGamePalette); // At this point the screen fades in and shows the game
-            */
+            /* TODO later since only in second cycle */
+            // self.read_levels(); already done in read_level_lst
+            self.graphics.fade_to_palette(PaletteType::Black);
+            self.g_is_game_busy = false;
+            self.draw_player_list();
+            self.initialize_game_info();
+            self.draw_fixed_level();
+            self.draw_game_panel(); // 01ED:0311
+            let number_of_infotrons: u16 = self.convert_to_easy_tiles();
+            self.reset_number_of_infotrons(number_of_infotrons);
+            self.find_murphy();
+            self.states.g_current_panel_height = K_PANEL_BITMAP_HEIGHT;
+            self.graphics
+                .draw_current_level_viewport(self.states.g_current_panel_height); // Added by open-supaplex
+            self.graphics.fade_to_palette(PaletteType::GamePalette); // At this point the screen fades in and shows the game
+
             if self.sounds.is_music_enabled == false {
                 self.sounds.stop_music();
             }
 
             self.g_is_game_busy = true;
-            //self.run_level();
-            /*
+            self.run_level();
 
-
-            gIsSPDemoAvailableToRun = 0;
-            if (gShouldExitGame != 0)
-            {
+            self.demo_manager.g_is_sp_demo_available_to_run = 0;
+            if self.g_should_exit_game {
                 break; // goto loc_47067;
             }
-
-            if (gFastMode != FastModeTypeNone)
-            {
+            if self.graphics.fast_mode != FastModeType::None {
                 break;
             }
+            //slideDownGameDash(); // 01ED:0351
+            // if self.byte_59B71 != 0 {
+            //     self.load_murphy_sprites();
+            // }
 
-            slideDownGameDash(); // 01ED:0351
-            if (byte_59B71 != 0)
-            {
-                loadMurphySprites();
-            }
-
-            gIsGameBusy = 0;
-            if (gShouldExitGame != 0)
-            {
+            self.g_is_game_busy = false;
+            if self.g_should_exit_game {
                 break; // goto loc_47067;
             }
-             */
+
             if self.sounds.is_music_enabled {
                 self.sounds.play_music_if_needed();
             }
@@ -407,6 +401,204 @@ impl Game<'_> {
                 }
             }
         }
+    }
+
+    fn run_level(&mut self) {
+        /*
+            if (gIsPlayingDemo == 0)
+            {
+                gIsLevelStartedAsDemo = 0;
+                gLevelFailed = 1;
+            }
+            else
+            {
+                gIsLevelStartedAsDemo = 1;
+                gLevelFailed = 0;
+            }
+
+            if (gDemoRecordingJustStarted == 1)
+            {
+                gDemoRecordingJustStarted = 0;
+                drawGameTime();
+
+                do
+                {
+                    int9handler(1);
+                }
+                while (areAnyF1ToF10KeysPressed());
+
+                initializeGameInfo();
+                if (isMusicEnabled == 0)
+                {
+                    stopMusic();
+                }
+
+                gIsLevelStartedAsDemo = 0;
+                gLevelFailed = 1;
+            }
+
+            gPlantedRedDiskCountdown = 0;
+            byte_5A323 = 0;
+
+            do
+            {
+                handleGameIterationStarted();
+
+                int9handler(0);
+
+                uint16_t mouseButtonsStatus;
+
+                getMouseStatus(NULL, NULL, &mouseButtonsStatus);
+
+                if (gIsDebugModeEnabled != 0)
+                {
+                    if (gToggleFancyEasyTilesThrottleCounter != 0)
+                    {
+                        gToggleFancyEasyTilesThrottleCounter--;
+                    }
+
+                    if (gIsEnterPressed == 0
+                        && mouseButtonsStatus == MouseButtonLeft //cmp bx, 1
+                        && gToggleFancyEasyTilesThrottleCounter == 0)
+                    {
+                        gToggleFancyEasyTilesThrottleCounter = 0xA;
+                        restoreOriginalFancyTiles(); // 01ED:1EFF
+                        drawFixedLevel();
+                        convertToEasyTiles();
+                    }
+                }
+
+                handleGameUserInput(); // 01ED:1F08
+                if (gDemoRecordingJustStarted == 1)
+                {
+                    // Restart the demo
+                    gDemoRecordingJustStarted = 0;
+                    drawGameTime();
+
+                    do
+                    {
+        //isFunctionKey:
+                        int9handler(1);
+                    }
+                    while (areAnyF1ToF10KeysPressed());
+
+        //notFunctionKey:
+                    initializeGameInfo();
+                    if (isMusicEnabled == 0)
+                    {
+                        stopMusic();
+                    }
+
+                    gIsLevelStartedAsDemo = 0;
+                    gLevelFailed = 1;
+
+                    gPlantedRedDiskCountdown = 0;
+                    byte_5A323 = 0;
+
+                    continue;
+
+                    // All the code in this "if" is equivalent to "jmp loc_48ADF"
+                }
+
+                if (gIsFlashingBackgroundModeEnabled != 0)
+                {
+                    replaceCurrentPaletteColor(0, (Color) { 0x35, 0x35, 0x35 });
+                }
+
+        //noFlashing:
+                updateMovingObjects(); // 01ED:1F28
+                if (gIsFlashingBackgroundModeEnabled != 0)
+                {
+                    replaceCurrentPaletteColor(0, (Color) { 0x21, 0x21, 0x21 });
+                }
+
+        //noFlashing2:
+                drawGameTime();
+                clearAdditionalInfoInGamePanelIfNeeded();
+                if (gIsFlashingBackgroundModeEnabled != 0)
+                {
+                    replaceCurrentPaletteColor(0, (Color) { 0x2d, 0x21, 0x0f });
+                }
+
+                updatePlantedRedDisk();
+                updateExplosionTimers();
+                updateScrollOffset();
+
+                if (gIsFlashingBackgroundModeEnabled != 0)
+                {
+                    replaceCurrentPaletteColor(0, (Color) { 0x3f, 0x3f, 0x3f });
+                }
+
+                drawCurrentLevelViewport(gCurrentPanelHeight); // Added by open-supaplex
+                if (gFastMode != FastModeTypeUltra)
+                {
+                    videoLoop(); // 01ED:2142
+                }
+                handleGameIterationFinished();
+
+                if (gDebugExtraRenderDelay > 1)
+                {
+                    playBaseSound();
+                }
+
+                // Extra delays in debug mode
+                for (int i = 1; i < gDebugExtraRenderDelay; ++i)
+                {
+                    if (gFastMode == FastModeTypeNone)
+                    {
+                        videoLoop(); // 01ED:2160
+                    }
+
+                    handleGameUserInput();
+                }
+
+                if (gIsFlashingBackgroundModeEnabled != 0)
+                {
+                    replaceCurrentPaletteColor(0, (Color) { 0, 0, 0 });
+                }
+
+                if (gShouldExitGame != 0)
+                {
+                    break;
+                }
+                gFrameCounter++;
+                if (gShouldExitLevel == 1)
+                {
+                    break;
+                }
+                if (gQuitLevelCountdown == 0) // 01ED:218D
+                {
+                    continue;
+                }
+
+                gQuitLevelCountdown--;
+                if (gQuitLevelCountdown == 0)
+                {
+                    break;
+                }
+            }
+            while(1);
+
+            if (gIsRecordingDemo != 0)
+            {
+                stopRecordingDemo();
+            }
+
+            uint8_t userDidNotCheat = (gHasUserCheated == 0);
+            gHasUserCheated = 0;
+            if (userDidNotCheat
+                && gShouldUpdateTotalLevelTime != 0
+                && byte_5A323 == 0)
+            {
+                addCurrentGameTimeToPlayer();
+            }
+
+            gIsMoveScrollModeEnabled = 0;
+            gAdditionalScrollOffsetX = 0;
+            gAdditionalScrollOffsetY = 0;
+            gIsFlashingBackgroundModeEnabled = 0;
+            gDebugExtraRenderDelay = 1;
+            replaceCurrentPaletteColor(0, (Color) { 0, 0, 0 }); */
     }
 
     fn wait_for_key_press_or_mouse_click(&mut self) {
@@ -520,7 +712,7 @@ impl Game<'_> {
                 Err(_) => return, // No more players to load
             }
 
-            self.g_hall_of_fame_data[i] = HallOfFameEntry::from(player_data);
+            self.g_hall_of_fame_data[i] = Box::new(HallOfFameEntry::from(player_data));
         }
     }
 
@@ -545,7 +737,7 @@ impl Game<'_> {
                 Err(_) => return, // No more players to load
             }
 
-            self.g_player_list_data[i] = PlayerEntry::from(player_data);
+            self.g_player_list_data[i] = Box::new(PlayerEntry::from(player_data));
         }
     }
 
@@ -615,6 +807,7 @@ impl Game<'_> {
         self.graphics
             .draw_text_with_chars6_font_with_transparent_background(dest_x, dest_y, color, text);
     }
+
     fn default_config(&mut self) {
         self.sounds.activate_combined_sound();
         self.sounds.is_music_enabled = true;
@@ -773,7 +966,7 @@ impl Game<'_> {
 
         // Sets everything to 6 which seems to mean all levels are blocked
         self.states.g_current_player_padded_level_data =
-            [K_SKIPPED_LEVEL_ENTRY_COLOR; K_NUMBER_OF_LEVEL_WITH_PADDING];
+            Box::new([K_SKIPPED_LEVEL_ENTRY_COLOR; K_NUMBER_OF_LEVEL_WITH_PADDING]);
         for i in 0..K_NUMBER_OF_LEVELS {
             self.states
                 .set_g_current_player_level_data(i, K_BLOCKED_LEVEL_ENTRY_COLOR);
@@ -919,8 +1112,11 @@ impl Game<'_> {
     }
 
     fn convert_level_number_to_3_digit_string_with_padding_0(&mut self, value: u8) {
-        let s = value.to_string();
-        self.g_sp_demo_file_name.replace_range(3..5, s.as_str());
+        log::debug!("convert_level_number_to_3_digit_string_with_padding_0. previous filename = {}, value = {}", self.demo_manager.g_sp_demo_filename, value);
+        let s = format!("{:03}", value.to_string());
+        self.demo_manager
+            .g_sp_demo_filename
+            .replace_range(3..6, s.as_str());
     }
 
     fn draw_level_list(&mut self) {
@@ -1085,7 +1281,7 @@ impl Game<'_> {
                 self.demo_manager.g_is_sp_demo_available_to_run = 1;
                 self.states.g_should_leave_main_menu = true;
                 self.g_is_playing_demo = false;
-                self.states.g_should_update_total_level_time = 0;
+                self.states.g_should_update_total_level_time = false;
                 self.states.g_has_user_cheated = true;
                 //prepareDemoRecordingFilename();
                 // This adds dashes to the level name or something?
@@ -1486,8 +1682,10 @@ impl Game<'_> {
 
                 // GFX background side
                 for x in limit_from_left..K_SCREEN_WIDTH {
-                    let color = self.graphics.g_scroll_destination_screen_bitmap_data
-                        [y * K_SCREEN_WIDTH + x - limit_from_left];
+                    let color = self.graphics.get_pixel(
+                        DestinationSurface::Scroll,
+                        y * K_SCREEN_WIDTH + x - limit_from_left,
+                    );
                     self.graphics
                         .video
                         .borrow_mut()
@@ -1859,7 +2057,7 @@ impl Game<'_> {
             && mouse_x <= ok_button_descriptor.end_x
             && mouse_y <= ok_button_descriptor.end_y
         {
-            self.g_player_list_data[self.states.g_current_player_index] = PlayerEntry::new();
+            self.g_player_list_data[self.states.g_current_player_index] = Box::new(PlayerEntry::new());
         }
 
         self.draw_text_with_chars6_font_with_opaque_background_if_possible(
@@ -2394,7 +2592,74 @@ impl Game<'_> {
 
     fn handle_ok_button_click(&mut self) {
         log::info!("handle_ok_button_click");
-        // Pressing the shift key will show the level sets in descending order
+
+        if self.g_player_list_data[self.states.g_current_player_index].name
+            == "--------".to_string()
+        {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                "NO PLAYER SELECTED     ".to_string(),
+            );
+            return;
+        }
+
+        if self.states.g_current_selected_level_index == K_LAST_LEVEL_INDEX as u8 {
+            log::debug!("self.states.g_current_selected_level_index == K_LAST_LEVEL_INDEX");
+            let mut number_of_completed_levels = 0;
+
+            for i in 0..K_NUMBER_OF_LEVELS {
+                if self.g_player_list_data[self.states.g_current_player_index].level_state[i]
+                    == PlayerLevelState::Completed
+                {
+                    number_of_completed_levels += 1;
+                }
+            }
+            if number_of_completed_levels == K_NUMBER_OF_LEVELS {
+                self.show_congratulations_screen();
+                return;
+            } else {
+                log::debug!("oups");
+                self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                    168,
+                    127,
+                    2,
+                    "COLORBLIND I GUESS     ".to_string(),
+                );
+                return;
+            }
+        } else if self.states.g_current_selected_level_index > K_NUMBER_OF_LEVELS as u8 {
+            return;
+        }
+
+        let current_level_color = self.states.g_current_player_padded_level_data
+            [K_FIRST_LEVEL_INDEX + self.states.g_current_selected_level_index as usize - 1];
+
+        log::debug!("Index : {}", self.states.g_current_selected_level_index);
+        log::debug!("Color : {}", current_level_color);
+
+        if current_level_color == K_BLOCKED_LEVEL_ENTRY_COLOR {
+            self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+                168,
+                127,
+                8,
+                "COLORBLIND I GUESS     ".to_string(),
+            );
+            return;
+        }
+        self.states.g_should_leave_main_menu = true;
+        self.g_is_playing_demo = false;
+        if current_level_color == K_COMPLETED_LEVEL_ENTRY_COLOR {
+            self.states.g_should_update_total_level_time = false;
+        } else {
+            self.states.g_should_update_total_level_time = true;
+        }
+
+        self.prepare_demo_recording_filename();
+        self.convert_level_number_to_3_digit_string_with_padding_0(
+            self.states.g_current_selected_level_index,
+        )
     }
 
     fn handle_floppy_disk_button_click(&mut self) {
@@ -2434,6 +2699,7 @@ impl Game<'_> {
 
     fn handle_player_list_scroll_down(&mut self) {
         log::info!("handle_player_list_scroll_down");
+        // Pressing the shift key will show the level sets in descending order
         self.button_states.g_player_list_button_pressed = true;
         self.button_states.g_player_list_down_button_pressed = true;
         self.button_states.g_player_list_up_button_pressed = false;
@@ -2816,7 +3082,7 @@ impl Game<'_> {
             new_entry.minutes = current_player_entry.minutes;
             new_entry.seconds = current_player_entry.seconds;
 
-            self.g_hall_of_fame_data[new_entry_insert_index as usize] = new_entry;
+            self.g_hall_of_fame_data[new_entry_insert_index as usize] = Box::new(new_entry);
         }
     }
 
@@ -3163,6 +3429,10 @@ impl Game<'_> {
                 break;
             }
         }
+        log::debug!(
+            "New level file loaded: {}",
+            self.level_manager.g_levels_dat_filename
+        );
 
         self.files.change_suffix(new_suffix.as_str());
 
@@ -3172,9 +3442,9 @@ impl Game<'_> {
         if self.g_is_forced_cheat_mode {
             self.g_player_list_data[0].level_state = [PlayerLevelState::Skipped; K_NUMBER_OF_LEVELS]
         } else {
-            self.g_player_list_data = [(); K_NUMBER_OF_PLAYERS].map(|_| PlayerEntry::new());
+            self.g_player_list_data = Box::new([(); K_NUMBER_OF_PLAYERS].map(|_| Box::new(PlayerEntry::new())));
             self.g_hall_of_fame_data =
-                [(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES].map(|_| HallOfFameEntry::new());
+            Box::new([(); K_NUMBER_OF_HALL_OF_FAME_ENTRIES].map(|_| Box::new(HallOfFameEntry::new())));
             self.read_hall_fame_lst();
             self.read_players_lst();
         }
@@ -3199,5 +3469,779 @@ impl Game<'_> {
         self.draw_level_list();
         self.draw_hall_of_fame();
         self.draw_rankings();
+    }
+
+    fn show_congratulations_screen(&mut self) {
+        self.graphics.fade_to_palette(PaletteType::Black);
+
+        let screen_pixel_backup = self.video.borrow_mut().get_screen_pixels();
+
+        self.graphics.draw_back_background();
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            120,
+            30,
+            15,
+            "CONGRATULATIONS".to_string(),
+        );
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            24,
+            70,
+            15,
+            "YOU HAVE COMPLETED ALL 111 LEVELS OF SUPAPLEX".to_string(),
+        );
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            64,
+            85,
+            15,
+            "YOUR BRAIN IS IN FANTASTIC SHAPE".to_string(),
+        );
+        self.draw_text_with_chars6_font_with_opaque_background_if_possible(
+            40,
+            100,
+            15,
+            "NOT MANY PEOPLE ARE ABLE TO MANAGE THIS".to_string(),
+        );
+        self.graphics
+            .fade_to_palette(PaletteType::InformationScreenPalette);
+        self.wait_for_key_press_or_mouse_click();
+        self.graphics.fade_to_palette(PaletteType::Black);
+        self.video
+            .borrow_mut()
+            .set_screen_pixels(screen_pixel_backup);
+
+        self.graphics.fade_to_palette(PaletteType::GamePalette);
+    }
+
+    fn prepare_demo_recording_filename(&mut self) {
+        let mut current_suffix = self.level_manager.g_levels_dat_filename.get(8..).unwrap();
+
+        // Checks if the last two chars are "00" like LEVELS.D00?
+        if current_suffix == "00" {
+            // replaces the content with "--"
+            current_suffix = "--";
+        }
+        // Now checks if the last two chars are "AT" like LEVELS.DAT?
+        else if current_suffix == "AT" {
+            // replaces the content with "00"
+            current_suffix = "00";
+        }
+
+        log::debug!(
+            "prepare_demo_recording_filename. filename={}",
+            self.demo_manager.g_sp_demo_filename
+        );
+
+        self.demo_manager
+            .g_sp_demo_filename
+            .replace_range(9..11, current_suffix);
+    }
+
+    fn initialize_game_info(&mut self) {
+        self.states.g_is_murphy_looking_left = false;
+        self.states.g_should_kill_murphy = false;
+        self.states.g_should_exit_level = false;
+        self.states.g_quit_level_countdown = 0;
+        self.states.g_number_of_remaining_red_disks = 0;
+        self.states.g_additional_info_in_game_panel_frame_counter = 0;
+        self.states.g_murphy_yawn_and_sleep_counter = 0;
+        self.states.g_last_drawn_minutes_and_seconds = 0xffff;
+        self.states.g_last_drawn_hours = 0xff; // 255
+        self.states.g_is_game_running = true;
+        self.states.g_aux_game_seconds_20ms_accumulator = 0;
+        self.states.g_game_seconds = 0;
+        self.states.g_game_minutes = 0;
+        self.states.g_game_hours = 0;
+        self.states.g_is_explosion_started = false;
+        self.states.g_terminal_max_frames_to_next_scroll = 0x7F; // 127
+        self.states.g_are_yellow_disks_detonated = false;
+        self.states.g_frame_counter = 0;
+        //    mov byte ptr word_510C1, 1
+        //    mov byte ptr word_510C1+1, 0
+        self.states.g_should_show_game_panel = true;
+        self.states.g_current_panel_height = K_PANEL_BITMAP_HEIGHT;
+        self.states.g_are_enemies_frozen = false;
+        self.states.g_is_murphy_going_through_portal &= 0xff00; // mov byte ptr gIsMurphyGoingThroughPortal, 0
+        self.states.g_planted_red_disk_countdown = 0;
+        self.states.g_planted_red_disk_position = 0;
+    }
+
+    fn draw_fixed_level(&mut self) {
+        if self.graphics.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        const K_MOVING_BITMAP_TOP_LEFT_CORNER_X: u16 = 288;
+        const K_MOVING_BITMAP_TOP_LEFT_CORNER_Y: u16 = 388;
+        const K_MOVING_BITMAP_TOP_RIGHT_CORNER_X: u16 = 296;
+        const K_MOVING_BITMAP_TOP_RIGHT_CORNER_Y: u16 = 388;
+        const K_MOVING_BITMAP_BOTTOM_RIGHT_CORNER_X: u16 = 296;
+        const K_MOVING_BITMAP_BOTTOM_RIGHT_CORNER_Y: u16 = 396;
+        const K_MOVING_BITMAP_BOTTOM_LEFT_CORNER_X: u16 = 288;
+        const K_MOVING_BITMAP_BOTTOM_LEFT_CORNER_Y: u16 = 396;
+        const K_MOVING_BITMAP_TOP_EDGE_X: u16 = 304;
+        const K_MOVING_BITMAP_TOP_EDGE_Y: u16 = 396;
+        const K_MOVING_BITMAP_RIGHT_EDGE_X: u16 = 304;
+        const K_MOVING_BITMAP_RIGHT_EDGE_Y: u16 = 388;
+        const K_MOVING_BITMAP_BOTTOM_EDGE_X: u16 = 304;
+        const K_MOVING_BITMAP_BOTTOM_EDGE_Y: u16 = 396;
+        const K_MOVING_BITMAP_LEFT_EDGE_X: u16 = 312;
+        const K_MOVING_BITMAP_LEFT_EDGE_Y: u16 = 388;
+
+        // Draws top-left corner
+        for y in 0..K_LEVEL_EDGE_SIZE {
+            for x in 0..K_LEVEL_EDGE_SIZE {
+                let src_address = (K_MOVING_BITMAP_TOP_LEFT_CORNER_Y as usize + y)
+                    * K_MOVING_BITMAP_WIDTH
+                    + K_MOVING_BITMAP_TOP_LEFT_CORNER_X as usize
+                    + x;
+                let dst_address = (y * K_LEVEL_BITMAP_WIDTH) + x;
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Draws top edge
+        for y in 0..K_LEVEL_EDGE_SIZE {
+            for x in (K_LEVEL_EDGE_SIZE - 1)..(K_LEVEL_BITMAP_WIDTH - K_LEVEL_EDGE_SIZE) {
+                let src_address = (K_MOVING_BITMAP_TOP_EDGE_Y as usize + y) * K_MOVING_BITMAP_WIDTH
+                    + K_MOVING_BITMAP_TOP_EDGE_X as usize
+                    + (x % K_LEVEL_EDGE_SIZE);
+                let dst_address = (y * K_LEVEL_BITMAP_WIDTH) + x;
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Top-right corner
+        for y in 0..K_LEVEL_EDGE_SIZE as i32 {
+            for x in num_iter::range_step(
+                (K_LEVEL_BITMAP_WIDTH - 1) as i32,
+                (K_LEVEL_BITMAP_WIDTH - K_LEVEL_EDGE_SIZE) as i32,
+                -1,
+            ) {
+                let src_x = x - K_LEVEL_BITMAP_WIDTH as i32 + K_LEVEL_EDGE_SIZE as i32;
+                let src_address = ((K_MOVING_BITMAP_TOP_RIGHT_CORNER_Y as i32 + y)
+                    * (K_MOVING_BITMAP_WIDTH as i32)
+                    + (K_MOVING_BITMAP_TOP_RIGHT_CORNER_X as i32)
+                    + src_x) as usize;
+                let dst_address = ((y * K_LEVEL_BITMAP_WIDTH as i32) + x) as usize;
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Right edge
+        for y in
+            ((K_LEVEL_EDGE_SIZE - 1) as i32)..((K_LEVEL_BITMAP_HEIGHT - K_LEVEL_EDGE_SIZE) as i32)
+        {
+            for x in num_iter::range_step_inclusive(
+                (K_LEVEL_BITMAP_WIDTH - 1) as i32,
+                (K_LEVEL_BITMAP_WIDTH - K_LEVEL_EDGE_SIZE) as i32,
+                -1,
+            ) {
+                let src_x = x - K_LEVEL_BITMAP_WIDTH as i32 + K_LEVEL_EDGE_SIZE as i32;
+                let src_y = y % (K_LEVEL_EDGE_SIZE as i32);
+                let src_address = ((K_MOVING_BITMAP_RIGHT_EDGE_Y as i32 + src_y)
+                    * (K_MOVING_BITMAP_WIDTH as i32)
+                    + K_MOVING_BITMAP_RIGHT_EDGE_X as i32
+                    + src_x) as usize;
+                let dst_address = ((y * K_LEVEL_BITMAP_WIDTH as i32) + x) as usize;
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Bottom-right corner
+        for y in num_iter::range_step_inclusive(
+            (K_LEVEL_BITMAP_HEIGHT - 1) as i32,
+            (K_LEVEL_BITMAP_HEIGHT - K_LEVEL_EDGE_SIZE) as i32,
+            -1,
+        ) {
+            for x in num_iter::range_step_inclusive(
+                (K_LEVEL_BITMAP_WIDTH - 1) as i32,
+                (K_LEVEL_BITMAP_WIDTH - K_LEVEL_EDGE_SIZE) as i32,
+                -1,
+            ) {
+                let src_x = x - K_LEVEL_BITMAP_WIDTH as i32 + K_LEVEL_EDGE_SIZE as i32;
+                let src_y = y - K_LEVEL_BITMAP_HEIGHT as i32 + K_LEVEL_EDGE_SIZE as i32;
+                let src_address = ((K_MOVING_BITMAP_BOTTOM_RIGHT_CORNER_Y as i32 + src_y)
+                    * (K_MOVING_BITMAP_WIDTH as i32)
+                    + (K_MOVING_BITMAP_BOTTOM_RIGHT_CORNER_X as i32)
+                    + src_x) as usize;
+                let dst_address = ((y * K_LEVEL_BITMAP_WIDTH as i32) + x) as usize;
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Bottom edge
+        for y in num_iter::range_step_inclusive(
+            (K_LEVEL_BITMAP_HEIGHT - 1) as i32,
+            (K_LEVEL_BITMAP_HEIGHT - K_LEVEL_EDGE_SIZE) as i32,
+            -1,
+        ) {
+            for x in ((K_LEVEL_EDGE_SIZE - 1) as i32)
+                ..((K_LEVEL_BITMAP_WIDTH - K_LEVEL_EDGE_SIZE) as i32)
+            {
+                let src_x = x % K_LEVEL_EDGE_SIZE as i32;
+                let src_y = y - K_LEVEL_BITMAP_HEIGHT as i32 + K_LEVEL_EDGE_SIZE as i32;
+                let src_address = ((K_MOVING_BITMAP_BOTTOM_EDGE_Y as i32 + src_y)
+                    * (K_MOVING_BITMAP_WIDTH as i32)
+                    + (K_MOVING_BITMAP_BOTTOM_EDGE_X as i32)
+                    + src_x) as usize;
+                let dst_address = ((y * K_LEVEL_BITMAP_WIDTH as i32) + x) as usize;
+                assert!(dst_address < (K_LEVEL_BITMAP_WIDTH * K_LEVEL_BITMAP_HEIGHT) as usize);
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Draws left edge
+        for y in
+            ((K_LEVEL_EDGE_SIZE - 1) as i32)..((K_LEVEL_BITMAP_HEIGHT - K_LEVEL_EDGE_SIZE) as i32)
+        {
+            for x in 0..K_LEVEL_EDGE_SIZE as i32 {
+                let src_y = y % K_LEVEL_EDGE_SIZE as i32;
+
+                let src_address = ((K_MOVING_BITMAP_LEFT_EDGE_Y as i32 + src_y)
+                    * (K_MOVING_BITMAP_WIDTH as i32)
+                    + (K_MOVING_BITMAP_LEFT_EDGE_X as i32)
+                    + x) as usize;
+                let dst_address = ((y * K_LEVEL_BITMAP_WIDTH as i32) + x) as usize;
+                assert!(dst_address < K_LEVEL_BITMAP_WIDTH * K_LEVEL_BITMAP_HEIGHT);
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        // Bottom-left corner
+
+        for y in num_iter::range_step_inclusive(
+            (K_LEVEL_BITMAP_HEIGHT - 1) as i32,
+            (K_LEVEL_BITMAP_HEIGHT - K_LEVEL_EDGE_SIZE) as i32,
+            -1,
+        ) {
+            for x in 0..K_LEVEL_EDGE_SIZE as i32 {
+                let src_y = y - K_LEVEL_BITMAP_HEIGHT as i32 + K_LEVEL_EDGE_SIZE as i32;
+                let src_address = ((K_MOVING_BITMAP_BOTTOM_LEFT_CORNER_Y as i32 + src_y)
+                    * (K_MOVING_BITMAP_WIDTH as i32)
+                    + (K_MOVING_BITMAP_BOTTOM_LEFT_CORNER_X as i32)
+                    + x) as usize;
+                let dst_address = ((y * K_LEVEL_BITMAP_WIDTH as i32) + x) as usize;
+                assert!(dst_address < (K_LEVEL_BITMAP_WIDTH * K_LEVEL_BITMAP_HEIGHT) as usize);
+                let color = self
+                    .graphics
+                    .get_pixel_from_bitmap(BitmapType::MovingDecoded, src_address as usize);
+                self.graphics
+                    .set_pixel(DestinationSurface::Level, dst_address as usize, color);
+            }
+        }
+
+        for tile_y in 1..(K_LEVEL_HEIGHT - 1) {
+            for tile_x in 1..(K_LEVEL_WIDTH - 1) {
+                let bitmap_tile_x = tile_x - 1;
+                let bitmap_tile_y = tile_y - 1;
+
+                let start_dst_x = K_LEVEL_EDGE_SIZE as usize + bitmap_tile_x * K_TILE_SIZE as usize;
+                let start_dst_y = K_LEVEL_EDGE_SIZE as usize + bitmap_tile_y * K_TILE_SIZE as usize;
+                let mut tile_value =
+                    self.states.g_current_level_state[tile_y * K_LEVEL_WIDTH + tile_x].tile;
+
+                // Tile values greater than the official ones (including 40, the invisible wall) will be rendered as empty
+                // spaces, to prevent issues even with custom graphics.
+                //
+                if tile_value >= LevelTileType::Count as u8 {
+                    tile_value = LevelTileType::Space as u8;
+                }
+
+                let start_src_x = tile_value as usize * K_TILE_SIZE;
+
+                for y in 0..K_TILE_SIZE {
+                    for x in 0..K_TILE_SIZE {
+                        let dst_address =
+                            (start_dst_y + y) * (K_LEVEL_BITMAP_WIDTH) + (start_dst_x) + x;
+                        let src_address = (y * (K_FIXED_BITMAP_WIDTH)) + start_src_x + x;
+                        let color = self
+                            .graphics
+                            .get_pixel_from_bitmap(BitmapType::FixedDecoded, src_address as usize);
+                        self.graphics.set_pixel(
+                            DestinationSurface::Level,
+                            dst_address as usize,
+                            color,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    fn draw_game_panel(&mut self) {
+        if self.graphics.fast_mode != FastModeType::Ultra {
+            self.graphics.clear_game_panel();
+        }
+        self.draw_game_panel_text();
+    }
+
+    fn draw_game_panel_text(&mut self) {
+        if self.graphics.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        if false
+        //gIsRecordingDemo != 0
+        // Recording demo?
+        { /*
+             self.graphics.draw_text_with_chars8_font_to_game_panel(
+                 72,
+                 3,
+                 8,
+                 "  DEMO  ".to_string(),
+             );
+             self.graphics.draw_text_with_chars8_font_to_game_panel(
+                 16,
+                 14,
+                 8,
+                 gCurrentDemoLevelName,
+             );
+             self.graphics.draw_text_with_chars8_font_to_game_panel(
+                 64,
+                 14,
+                 8,
+                 gRecordingDemoMessage,
+             );*/
+        } else if self.g_is_playing_demo
+        // Playing demo?
+        {
+            let demo_level_name = self.level_manager.g_level_list_data
+                [self.demo_manager.g_selected_original_demo_level_number]
+                .name
+                .clone();
+            let demo_level_number = format!(
+                "{:03}",
+                self.demo_manager.g_selected_original_demo_level_number
+            );
+
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                72,
+                3,
+                8,
+                "  DEMO  ".to_string(),
+            );
+            self.graphics
+                .draw_text_with_chars8_font_to_game_panel(16, 14, 8, demo_level_number);
+            self.graphics
+                .draw_text_with_chars8_font_to_game_panel(64, 14, 8, demo_level_name);
+        } else {
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                72,
+                3,
+                6,
+                self.states.g_player_name.clone(),
+            );
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                16,
+                14,
+                8,
+                self.states
+                    .g_current_level_name
+                    .get(0..3)
+                    .unwrap()
+                    .to_string(),
+            );
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                64,
+                14,
+                8,
+                self.states
+                    .g_current_level_name
+                    .get(4..)
+                    .unwrap()
+                    .to_string(),
+            );
+        }
+
+        self.draw_number_of_remaining_infotrons();
+        self.draw_game_time();
+    }
+
+    fn draw_number_of_remaining_infotrons(&mut self) {
+        if self.graphics.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        if self.states.g_number_of_remaining_infotrons < 1 {
+            self.states.g_number_of_remaining_infotrons = 0; // WTF? Can this be negative? In theory not...
+        }
+
+        let color = if self.states.g_number_of_remaining_infotrons == 0 {
+            6
+        } else {
+            8
+        };
+
+        self.graphics.draw_text_with_chars8_font_to_game_panel(
+            272,
+            14,
+            color,
+            format!("{:03}", self.states.g_number_of_remaining_infotrons),
+        );
+    }
+
+    fn draw_game_time(&mut self) {
+        if self.graphics.fast_mode == FastModeType::Ultra {
+            return;
+        }
+
+        // Only the 2 last digits will be printed, hence why it will be used with &number[1] everywhere
+        if (self.states.g_last_drawn_minutes_and_seconds & 0xFF) as u8 != self.states.g_game_seconds
+        // byte
+        {
+            self.states.g_last_drawn_minutes_and_seconds =
+                (self.states.g_last_drawn_minutes_and_seconds & 0xFF00)
+                    + (self.states.g_game_seconds as u16); // byte
+
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                208,
+                3,
+                6,
+                format!("{:02}", self.states.g_game_seconds),
+            ); // seconds
+        }
+
+        if (self.states.g_last_drawn_minutes_and_seconds >> 8) as u8 != self.states.g_game_minutes
+        // byte
+        {
+            self.states.g_last_drawn_minutes_and_seconds = ((self.states.g_game_minutes as u16)
+                << 8)
+                + (self.states.g_last_drawn_minutes_and_seconds & 0x00FF); // byte
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                208,
+                3,
+                6,
+                format!("{:02}", self.states.g_game_minutes),
+            );
+        }
+
+        if self.states.g_last_drawn_hours != self.states.g_game_hours {
+            self.states.g_last_drawn_hours = self.states.g_game_hours;
+            self.graphics.draw_text_with_chars8_font_to_game_panel(
+                208,
+                3,
+                6,
+                format!("{:02}", self.states.g_game_hours),
+            );
+        }
+    }
+
+    fn convert_to_easy_tiles(&mut self) -> u16 {
+        let mut number_of_infotrons = 0;
+        let mut number_of_something = 0; // this is bx, just counts the number of tiles so technically is same as cx at this point… probably a return value but I don't see it used anywhere???
+
+        for i in 0..K_LEVEL_SIZE {
+            let current_tile = i;
+            number_of_something += 1;
+
+            if self.states.g_current_level_state[current_tile].tile == 0xf1 {
+                self.states.g_current_level_state[current_tile].tile = LevelTileType::Explosion as u8;
+                continue; // jmp short loc_4A3B0
+            }
+
+            if self.g_is_game_busy != true {
+                if self.states.g_current_level_state[current_tile].tile == LevelTileType::Infotron as u8 {
+                    number_of_infotrons += 1;
+                    continue; // jmp short loc_4A3B0
+                }
+            }
+            // TODO: what are these gIsGameBusy for??
+            if self.g_is_game_busy == true
+                || self.states.g_current_level_state[current_tile].state != 0
+                || self.states.g_current_level_state[current_tile].tile != LevelTileType::SnikSnak as u8
+            //jz  short loc_4A34B
+            {
+                if self.g_is_game_busy == true
+                    || self.states.g_current_level_state[current_tile].state != 0
+                    || self.states.g_current_level_state[current_tile].tile != LevelTileType::Electron as u8
+                //jz  short loc_4A379
+                {
+                    if (self.states.g_current_level_state[current_tile].state == 0
+                        && self.states.g_current_level_state[current_tile].tile == LevelTileType::HorizontalChipLeft as u8)
+                        || (self.states.g_current_level_state[current_tile].state == 0
+                            && self.states.g_current_level_state[current_tile].tile == LevelTileType::HorizontalChipRight as u8)
+                        || (self.states.g_current_level_state[current_tile].state == 0
+                            && self.states.g_current_level_state[current_tile].tile == LevelTileType::HorizontalChipTop as u8)
+                        || (self.states.g_current_level_state[current_tile].state == 0
+                            && self.states.g_current_level_state[current_tile].tile == LevelTileType::HorizontalChipBottom as u8)
+                    {
+                        self.states.g_current_level_state[current_tile].tile = LevelTileType::Chip as u8; // mov word ptr [si], 5
+                        self.states.g_current_level_state[current_tile].state = 0;
+                        continue; // jmp short loc_4A3B0
+                    }
+                    if self.states.g_current_level_state[current_tile].state == 0
+                        && self.states.g_current_level_state[current_tile].tile >= LevelTileType::Hardware2 as u8
+                        && self.states.g_current_level_state[current_tile].tile <= LevelTileType::Hardware11 as u8
+                    {
+                        self.states.g_current_level_state[current_tile].tile = LevelTileType::Hardware as u8; // mov word ptr [si], 6
+                        self.states.g_current_level_state[current_tile].state = 0;
+                        continue; // jmp short loc_4A3B0
+                    }
+
+                    if self.states.g_current_level_state[current_tile].state == 0
+                        && self.states.g_current_level_state[current_tile].tile >= LevelTileType::SportRight as u8
+                        && self.states.g_current_level_state[current_tile].tile <= LevelTileType::SportUp as u8
+                    {
+                        self.states.g_current_level_state[current_tile].tile -= 4; // Converts Sport[Direction] to Port[Direction]
+                        self.states.g_current_level_state[current_tile].state = 1;
+                        continue;
+                    }
+
+                    continue;
+                }
+            }
+
+            let left_tile = i-1;
+            let above_tile = i-K_LEVEL_WIDTH;
+            let right_tile = i + 1;
+
+            if self.states.g_current_level_state[current_tile].state != 0 || self.states.g_current_level_state[current_tile].tile != LevelTileType::Electron as u8
+            //jz  short loc_4A379
+            {
+                if self.states.g_current_level_state[left_tile].tile == (LevelTileType::Space as u8) && self.states.g_current_level_state[left_tile].state == 0
+                //cmp word ptr [si-2], 0
+                {
+                    self.states.g_current_level_state[current_tile].state = 1;
+                    continue; // jmp short loc_4A3B0
+                }
+                if self.states.g_current_level_state[above_tile].tile == (LevelTileType::Space as u8) && self.states.g_current_level_state[above_tile].state == 0
+                //cmp word ptr [si-78h], 0
+                {
+                    self.states.g_current_level_state[above_tile].state = 0x10;
+                    self.states.g_current_level_state[above_tile].tile = LevelTileType::SnikSnak as u8;
+                    // mov word ptr [si], 0FFFFh
+                    self.states.g_current_level_state[current_tile].state = 0xFF;
+                    self.states.g_current_level_state[current_tile].tile = 0xFF;
+                    continue; // jmp short loc_4A3B0
+                }
+                if self.states.g_current_level_state[right_tile].tile == (LevelTileType::Space as u8) && self.states.g_current_level_state[right_tile].state == 0
+                //cmp word ptr [si+2], 0
+                {
+                    self.states.g_current_level_state[right_tile].state = 0x28;
+                    self.states.g_current_level_state[right_tile].tile = LevelTileType::SnikSnak as u8;
+                    self.states.g_current_level_state[current_tile].state = 0xFF;
+                    self.states.g_current_level_state[current_tile].tile = 0xFF;
+                    continue; // jmp short loc_4A3B0
+                }
+
+                continue;
+            }
+            if self.states.g_current_level_state[left_tile].tile == LevelTileType::Space as u8 && self.states.g_current_level_state[left_tile].state == 0
+            //cmp word ptr [si-2], 0
+            {
+                self.states.g_current_level_state[current_tile].state = 1; //mov byte ptr [si+1], 1
+                continue; // jmp short loc_4A3B0
+            }
+            if self.states.g_current_level_state[above_tile].tile == LevelTileType::Space as u8 && self.states.g_current_level_state[above_tile].state == 0
+            //cmp word ptr [si-78h], 0
+            {
+                // mov word ptr [si-78h], 1018h
+                self.states.g_current_level_state[above_tile].state = 0x10;
+                self.states.g_current_level_state[above_tile].tile = LevelTileType::Electron as u8;
+                // mov word ptr [si], 0FFFFh
+                self.states.g_current_level_state[current_tile].state = 0xFF;
+                self.states.g_current_level_state[current_tile].tile = 0xFF;
+                continue; // jmp short loc_4A3B0
+            }
+            if self.states.g_current_level_state[right_tile].tile == LevelTileType::Space as u8 && self.states.g_current_level_state[right_tile].state == 0
+            //cmp word ptr [si+2], 0
+            {
+                self.states.g_current_level_state[right_tile].state = 0x28;
+                self.states.g_current_level_state[right_tile].tile = LevelTileType::Electron as u8;
+                self.states.g_current_level_state[current_tile].state = 0xFF;
+                self.states.g_current_level_state[current_tile].tile = 0xFF;
+                continue; // jmp short loc_4A3B0
+            }
+        }
+
+        number_of_infotrons
+    }
+
+    fn find_murphy(&mut self) {
+        for i in 0..K_LEVEL_SIZE {
+            if self.states.g_current_level.tiles[i] == LevelTileType::Murphy as u8 {
+                self.states.g_murphy_location = i;
+                break;
+            }
+        }
+
+        self.scroll_to_murphy();
+    }
+
+    fn scroll_to_murphy(&mut self) {
+        // Parameters:
+        // - si: murphy location * 2
+        // - al: murphy location
+
+        self.states.g_murphy_tile_x = self.states.g_murphy_location % K_LEVEL_WIDTH; // stores X coord
+        self.states.g_murphy_tile_y = self.states.g_murphy_location / K_LEVEL_WIDTH; // stores Y coord
+
+        self.states.g_murphy_position_x = self.states.g_murphy_tile_x * K_TILE_SIZE;
+        self.states.g_murphy_position_y = self.states.g_murphy_tile_y * K_TILE_SIZE;
+
+        self.graphics
+            .draw_moving_frame(304, 132, self.states.g_murphy_location);
+        self.update_scroll_offset();
+
+        self.graphics.video_loop();
+    }
+
+    fn reset_number_of_infotrons(&mut self, number_of_infotrons_found_in_level: u16) {
+        // In the original game, the number of infotrons found in a level is stored in a 2-bytes variable,
+        // however, when stored for its use in the game, it's stored in a 1-byte variable.
+        //
+        let mut number_of_infotrons = (number_of_infotrons_found_in_level & 0xFF) as u8;
+        if self.states.g_number_of_info_trons != 0 {
+            number_of_infotrons = self.states.g_number_of_info_trons;
+        }
+
+        self.states.g_number_of_remaining_infotrons = number_of_infotrons;
+
+        self.states.g_total_number_of_infotrons = number_of_infotrons;
+        self.draw_number_of_remaining_infotrons();
+    }
+    fn update_scroll_offset(&mut self) {
+        let mut random_number = 0;
+
+        // This random number is used to generate the shaking effect on explosions.
+        // The original game generates this random number here for _every_ explosion, even if
+        // normally only Murphy's explosion will make the screen shake. However it's necessary
+        // to do this here to make sure the right sequence of random numbers is generated when
+        // there are explosions in the level.
+        //
+        if self.states.g_is_explosion_started {
+            random_number = self.generate_random_number();
+        }
+
+        let mut scroll_x = self.states.g_murphy_position_x as i32;
+        let mut scroll_y = self.states.g_murphy_position_y as i32;
+        scroll_x -= K_SCREEN_WIDTH as i32 / 2; // 152
+        if scroll_x < 0 {
+            scroll_x = 0;
+        }
+
+        let mut max_scroll_x = (K_LEVEL_BITMAP_WIDTH - K_SCREEN_WIDTH) as i32;
+        if scroll_x > max_scroll_x
+        // 624
+        {
+            scroll_x = max_scroll_x; // 624
+        }
+
+        if self.states.g_should_show_game_panel == false {
+            scroll_y -= (K_SCREEN_HEIGHT / 2) as i32;
+        } else {
+            scroll_y -= ((K_SCREEN_HEIGHT - K_PANEL_BITMAP_HEIGHT) / 2) as i32;
+        }
+
+        if scroll_y < 0 {
+            scroll_y = 0;
+        }
+
+        let mut max_scroll_y = 0;
+
+        if self.states.g_should_show_game_panel == false {
+            max_scroll_y = (K_LEVEL_BITMAP_HEIGHT - K_SCREEN_HEIGHT) as i32;
+            if scroll_y > max_scroll_y {
+                scroll_y = max_scroll_y;
+            }
+        } else {
+            max_scroll_y = (K_LEVEL_BITMAP_HEIGHT - K_SCREEN_HEIGHT + K_PANEL_BITMAP_HEIGHT) as i32;
+            if scroll_y > max_scroll_y {
+                scroll_y = max_scroll_y;
+            }
+        }
+
+        if self.states.g_is_move_scroll_mode_enabled == false
+            || self.keyboard.borrow().g_is_numpad_5_key_pressed
+        {
+            self.states.g_murphy_scroll_offset_x = scroll_x;
+            self.states.g_murphy_scroll_offset_y = scroll_y;
+        } else {
+            scroll_x = self.states.g_murphy_scroll_offset_x;
+            scroll_y = self.states.g_murphy_scroll_offset_y;
+
+            let mut additional_scroll_x = scroll_x;
+            scroll_x += self.graphics.g_additional_scroll_offset_x;
+            if scroll_x < 0 {
+                scroll_x = 0;
+            } else {
+                if scroll_x > max_scroll_x {
+                    scroll_x = max_scroll_x;
+                }
+            }
+
+            additional_scroll_x -= scroll_x;
+            additional_scroll_x = -additional_scroll_x;
+            self.graphics.g_additional_scroll_offset_x = additional_scroll_x;
+
+            let mut additional_scroll_y = scroll_y;
+            scroll_y += self.graphics.g_additional_scroll_offset_y;
+            if scroll_y < 0
+            // in asm there wasn't a explicit "cmp", just the "add" above
+            {
+                scroll_y = 0;
+            } else {
+                if scroll_y > max_scroll_y
+                // 168
+                {
+                    scroll_y = max_scroll_y; // 168
+                }
+            }
+
+            additional_scroll_y -= scroll_y;
+            additional_scroll_y = -additional_scroll_y;
+            self.graphics.g_additional_scroll_offset_y = additional_scroll_y;
+        }
+
+        // This makes the screen shake on an explosion
+        if self.states.g_should_shake_with_all_explosions != false // could be == true ? or should not be bool ?
+            || (self.states.g_shake_with_explosion_disabled == false
+                && (self.states.g_quit_level_countdown & 0xFF) != 0)
+        {
+            random_number = random_number & 0x101;
+
+            let scroll_shake_yoffset = (random_number >> 8) as i32;
+            let mut scroll_shake_xoffset = (random_number & 0xFF) as i32;
+
+            scroll_y += scroll_shake_yoffset;
+            if scroll_x > 0x13C
+            // 316
+            {
+                scroll_shake_xoffset = -scroll_shake_xoffset;
+            }
+
+            scroll_x += scroll_shake_xoffset;
+        }
+
+        self.graphics.g_scroll_offset_x = scroll_x;
+        self.graphics.g_scroll_offset_y = scroll_y;
     }
 }

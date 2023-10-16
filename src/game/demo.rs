@@ -40,7 +40,7 @@ pub struct DemoManager {
 
     pub g_demo_random_seeds: [u16; K_NUMBER_OF_DEMOS],
 
-    pub g_demos: Demos,
+    pub g_demos: Box<Demos>,
 
     g_current_demo_level_name: String,
 
@@ -68,7 +68,7 @@ impl DemoManager {
             g_demo_current_input_repeater_count: 0,
             g_current_demo_level_name: String::from(".SP\0----- DEMO LEVEL! -----"),
             g_demo_random_seeds: [0; K_NUMBER_OF_DEMOS],
-            g_demos: Demos::new(),
+            g_demos: Box::new(Demos::new()),
             k_original_demo_file_sizes: [
                 0x00cE, 0x016a, 0x0146, 0x00cd, 0x024d, 0x012c, 0x01a7, 0x01fb, 0x01d2, 0x02fd,
             ],

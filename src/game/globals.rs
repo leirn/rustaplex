@@ -15,6 +15,8 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+use std::default;
+
 pub const VERSION_STRING: &str = "0.1";
 pub const GAME_NAME: &str = "RUSTAPLEX";
 
@@ -69,49 +71,50 @@ pub struct StatefulLevelTile {
     pub state: u8,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default, PartialEq, PartialOrd)]
 pub enum LevelTileType {
-    LevelTileTypeSpace = 0,
-    LevelTileTypeZonk = 1,
-    LevelTileTypeBase = 2,
-    LevelTileTypeMurphy = 3,
-    LevelTileTypeInfotron = 4,
-    LevelTileTypeChip = 5,
-    LevelTileTypeHardware = 6,
-    LevelTileTypeExit = 7,
-    LevelTileTypeOrangeDisk = 8,
-    LevelTileTypePortRight = 9,
-    LevelTileTypePortDown = 10,
-    LevelTileTypePortLeft = 11,
-    LevelTileTypePortUp = 12,
-    LevelTileTypeSportRight = 13,
-    LevelTileTypeSportDown = 14,
-    LevelTileTypeSportLeft = 15,
-    LevelTileTypeSportUp = 16,
-    LevelTileTypeSnikSnak = 17,
-    LevelTileTypeYellowDisk = 18,
-    LevelTileTypeTerminal = 19,
-    LevelTileTypeRedDisk = 20,
-    LevelTileTypePortVertical = 21,
-    LevelTileTypePortHorizontal = 22,
-    LevelTileTypePort4Way = 23,
-    LevelTileTypeElectron = 24,
-    LevelTileTypeBug = 25,
-    LevelTileTypeHorizontalChipLeft = 26,
-    LevelTileTypeHorizontalChipRight = 27,
-    LevelTileTypeHardware2 = 28,
-    LevelTileTypeHardware3 = 29,
-    LevelTileTypeHardware4 = 30,
-    LevelTileTypeExplosion = 31,
-    LevelTileTypeHardware6 = 32,
-    LevelTileTypeHardware7 = 33,
-    LevelTileTypeHardware8 = 34,
-    LevelTileTypeHardware9 = 35,
-    LevelTileTypeHardware10 = 36,
-    LevelTileTypeHardware11 = 37,
-    LevelTileTypeHorizontalChipTop = 38,
-    LevelTileTypeHorizontalChipBottom = 39,
-    LevelTileTypeCount,
+    #[default]
+    Space = 0,
+    Zonk = 1,
+    Base = 2,
+    Murphy = 3,
+    Infotron = 4,
+    Chip = 5,
+    Hardware = 6,
+    Exit = 7,
+    OrangeDisk = 8,
+    PortRight = 9,
+    PortDown = 10,
+    PortLeft = 11,
+    PortUp = 12,
+    SportRight = 13,
+    SportDown = 14,
+    SportLeft = 15,
+    SportUp = 16,
+    SnikSnak = 17,
+    YellowDisk = 18,
+    Terminal = 19,
+    RedDisk = 20,
+    PortVertical = 21,
+    PortHorizontal = 22,
+    Port4Way = 23,
+    Electron = 24,
+    Bug = 25,
+    HorizontalChipLeft = 26,
+    HorizontalChipRight = 27,
+    Hardware2 = 28,
+    Hardware3 = 29,
+    Hardware4 = 30,
+    Explosion = 31,
+    Hardware6 = 32,
+    Hardware7 = 33,
+    Hardware8 = 34,
+    Hardware9 = 35,
+    Hardware10 = 36,
+    Hardware11 = 37,
+    HorizontalChipTop = 38,
+    HorizontalChipBottom = 39,
+    Count,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -302,3 +305,10 @@ impl SpecialPortInfo {
 pub const K_SPECIAL_PORT_STRUCT_SIZE: usize = 6;
 
 pub const K_LEVEL_MAX_NUMBER_OF_SPECIAL_PORTS: usize = 10;
+
+#[derive(PartialEq)]
+pub enum FastModeType {
+    None,
+    Normal,
+    Ultra,
+}
