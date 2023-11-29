@@ -16,7 +16,7 @@ jobs:
     - name: Prepare env
       run: |
         sudo apt-get update
-        sudo apt-get install libsdl2-dev
+        sudo apt-get install libsdl2-dev libsdl2-mixer-dev
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build --verbose
@@ -29,7 +29,7 @@ jobs:
     - name: Prepare env
       run: |
         sudo apt-get update
-        sudo apt-get install libsdl2-dev
+        sudo apt-get install libsdl2-dev libsdl2-mixer-dev
     - uses: actions/checkout@v3
     - name: Run tests
       run: cargo test --verbose
